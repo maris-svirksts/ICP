@@ -1,10 +1,10 @@
 # Define an Auto Scaling Group to manage EC2 instances
-resource "aws_autoscaling_group" "bar" {
+resource "aws_autoscaling_group" "ec2_scaler" {
   name                 = "terraform-asg-example"
   launch_configuration = aws_launch_configuration.micro.name
-  min_size             = 1
-  max_size             = 3
-  desired_capacity     = 1
+  min_size             = var.min_size
+  max_size             = var.max_size
+  desired_capacity     = var.min_size
   vpc_zone_identifier  = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id, aws_subnet.public_subnet_3.id]
   # Configures scaling parameters and distributes instances across 3 zones for high availability
 
@@ -29,9 +29,27 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   actions_enabled     = true
   alarm_actions       = [aws_autoscaling_policy.scale_up.arn]
   dimensions = {
-    AutoScalingGroupName = aws_autoscaling_group.bar.name
+    AutoScalingGroupName = aws_autoscaling_group.ec2_scaler.name
   }
 }
+
+resource "aws_cloudwatch_metric_alarm" "low_cpu" {
+  alarm_name          = "low-cpu-usage"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "50"
+  alarm_description   = "This alarm triggers when CPU utilization falls at or below 50% for 10 minutes."
+  actions_enabled     = true
+  alarm_actions       = [aws_autoscaling_policy.scale_down.arn]
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.ec2_scaler.name
+  }
+}
+
 
 # Attach the scaling policy to the Auto Scaling Group
 resource "aws_autoscaling_policy" "scale_up" {
@@ -39,7 +57,17 @@ resource "aws_autoscaling_policy" "scale_up" {
   scaling_adjustment     = 1
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 300
-  autoscaling_group_name = aws_autoscaling_group.bar.name
+  autoscaling_group_name = aws_autoscaling_group.ec2_scaler.name
+
+  policy_type = "SimpleScaling"
+}
+
+resource "aws_autoscaling_policy" "scale_down" {
+  name                   = "terraform-asg-scale-down"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.ec2_scaler.name
 
   policy_type = "SimpleScaling"
 }

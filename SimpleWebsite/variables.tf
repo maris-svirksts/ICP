@@ -35,3 +35,15 @@ variable "user_data" {
  EOF
   # Bash script for initial setup of the EC2 instance. It updates packages, installs Apache, PHP, MySQL and displays a unique page. Uses https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html to identify instance.
 }
+
+variable "min_size" {
+  description = "Minimum size of the Auto Scaling Group"
+  type        = number
+  default     = 1
+}
+
+variable "max_size" {
+  description = "Maximum size of the Auto Scaling Group"
+  type        = number
+  default     = 3
+}
