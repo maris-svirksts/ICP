@@ -13,6 +13,8 @@ resource "aws_autoscaling_group" "ec2_scaler" {
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [aws_efs_mount_target.mount_target] # EFS mounting to the EC2 instance fails otherwise.
 }
 
 # CloudWatch Alarm to trigger the scaling
