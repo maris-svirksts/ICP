@@ -5,7 +5,7 @@ resource "aws_autoscaling_group" "ec2_scaler" {
   min_size             = var.min_size
   max_size             = var.max_size
   desired_capacity     = var.min_size
-  vpc_zone_identifier  = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id, aws_subnet.public_subnet_3.id]
+  vpc_zone_identifier  = [var.public_subnet_1_id, var.public_subnet_2_id, var.public_subnet_3_id]
   # Configures scaling parameters and distributes instances across 3 zones for high availability
 
   target_group_arns = [aws_lb_target_group.asg.arn]

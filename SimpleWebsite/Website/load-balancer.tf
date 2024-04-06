@@ -4,7 +4,7 @@ resource "aws_lb" "my_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id, aws_subnet.public_subnet_3.id]
+  subnets            = [var.public_subnet_1_id, var.public_subnet_2_id, var.public_subnet_3_id]
 
   enable_deletion_protection = false # Allows the ALB to be deleted without manual intervention
 }
@@ -14,7 +14,7 @@ resource "aws_lb_target_group" "asg" {
   name     = "my-tg-example"
   port     = 80
   protocol = "HTTP"
-  vpc_id   = aws_vpc.terraform_vpc.id
+  vpc_id   = var.vpc_id
   # Configures health checks for ensuring instances are healthy before routing traffic
   health_check {
     enabled  = true

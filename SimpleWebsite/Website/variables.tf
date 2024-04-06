@@ -47,3 +47,23 @@ variable "max_size" {
   type        = number
   default     = 3
 }
+
+variable "vpc_id" {
+  description = "VPC ID"
+  type        = string
+}
+
+variable "public_subnet_1_id" {
+  description = "Public Subnet 1 ID"
+  type        = string
+}
+
+variable "public_subnet_2_id" {
+  description = "Public Subnet 2 ID"
+  type        = string
+}
+
+variable "public_subnet_3_id" {
+  description = "Public Subnet 3 ID"
+  type        = string
+}

@@ -2,7 +2,7 @@
 resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
   description = "Allow port 80 to ALB"
-  vpc_id      = aws_vpc.terraform_vpc.id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 80
@@ -29,7 +29,7 @@ resource "aws_security_group" "alb_sg" {
 resource "aws_security_group" "ec2" {
   name        = "example-security-group"
   description = "Security group for EC2 instance allowing HTTP and SSH"
-  vpc_id      = aws_vpc.terraform_vpc.id
+  vpc_id      = var.vpc_id
 
   # Allow HTTP
   ingress {
