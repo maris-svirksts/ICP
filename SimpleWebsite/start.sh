@@ -45,6 +45,14 @@ if [ $? -eq 0 ]; then
     terraform apply \
         -var="vpc_id=${vpc_id}" # -auto-approve
 
+    # Copy files to the webserver EFS mount point.
+    ASG_NAME=$(terraform output -raw autoscaling_group)
+    INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG_NAME" --query "AutoScalingGroups[].Instances[0].InstanceId" --output text)
+    PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].PublicIpAddress' --output text)
+
+    ssh-keyscan $PUBLIC_IP >> ~/.ssh/known_hosts
+    scp -i "../../../Maris_Svirksts.pem" "../SupportFunctions/Files/index.html" "../SupportFunctions/Files/index.php" "../SupportFunctions/Files/info.php" ec2-user@$PUBLIC_IP:/var/www/html
+
 else
     echo "Python script failed. Halting execution."
     exit 1

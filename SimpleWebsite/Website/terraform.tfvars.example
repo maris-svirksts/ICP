@@ -1,2 +1,3 @@
-min_size = 1
-max_size = 3
+min_size        = 1
+max_size        = 3
+ec2_scaler_name = "terraform-ec2-scaler"

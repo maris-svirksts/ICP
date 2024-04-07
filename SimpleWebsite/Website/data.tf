@@ -1,5 +1,5 @@
-# Fetch the latest Ubuntu AMI information for instance creation
-data "aws_ami" "ubuntu" {
+# Fetch the latest Amazon Linux AMI information for instance creation
+data "aws_ami" "amazon_linux" {
   most_recent = true
 
   filter {

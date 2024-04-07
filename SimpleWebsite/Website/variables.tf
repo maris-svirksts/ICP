@@ -10,6 +10,12 @@ variable "max_size" {
   default     = 3
 }
 
+variable "ec2_scaler_name" {
+  description = ""
+  type = string
+  default = "terraform-ec2-scaler"
+}
+
 variable "vpc_id" {
   description = "VPC ID"
   type        = string

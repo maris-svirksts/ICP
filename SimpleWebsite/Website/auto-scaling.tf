@@ -1,6 +1,6 @@
 # Define an Auto Scaling Group to manage EC2 instances
 resource "aws_autoscaling_group" "ec2_scaler" {
-  name                 = "terraform-asg-example"
+  name                 = var.ec2_scaler_name
   launch_configuration = aws_launch_configuration.micro.name
   min_size             = var.min_size
   max_size             = var.max_size
