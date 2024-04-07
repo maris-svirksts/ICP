@@ -12,26 +12,25 @@ variable "max_size" {
 
 variable "ec2_scaler_name" {
   description = ""
-  type = string
-  default = "terraform-ec2-scaler"
+  type        = string
+  default     = "terraform-ec2-scaler"
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "The VPC ID where resources will be deployed"
   type        = string
 }
 
-variable "public_subnet_1_id" {
-  description = "Public Subnet 1 ID"
-  type        = string
+variable "public_subnets" {
+  description = "A list of public subnet IDs for deploying resources"
+  type        = list(string)
 }
 
-variable "public_subnet_2_id" {
-  description = "Public Subnet 2 ID"
-  type        = string
-}
-
-variable "public_subnet_3_id" {
-  description = "Public Subnet 3 ID"
-  type        = string
+variable "common_tags" {
+  description = "Common tags for all resources"
+  type        = map(string)
+  default = {
+    "Project"     = "Website"
+    "Environment" = "Development"
+  }
 }

@@ -4,7 +4,7 @@ resource "aws_lb" "my_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = [var.public_subnet_1_id, var.public_subnet_2_id, var.public_subnet_3_id]
+  subnets            = var.public_subnets
 
   enable_deletion_protection = false # Allows the ALB to be deleted without manual intervention
 }

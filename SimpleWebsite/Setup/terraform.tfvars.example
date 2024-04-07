@@ -1,0 +1,17 @@
+# Specify the name of the S3 bucket for storing Terraform state files.
+tfstate_bucket_name = "terraform-state-bucket"
+
+# Specify the name of the DynamoDB table for Terraform state locking.
+state_lock_table = "terraform-state-lock"
+
+# CIDR block for the VPC to be created.
+vpc_cidr = "10.0.0.0/16"
+
+# List of availability zones in the region.
+availability_zones = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
+
+# Common tags to be applied to all resources.
+common_tags = {
+  Project     = "Website"
+  Environment = "Development"
+}

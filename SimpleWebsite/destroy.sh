@@ -1,17 +1,19 @@
 #!/bin/bash
 
-# Run the main script.
+# This script is used to tear down the infrastructure set up by start.sh.
+# It first destroys the Website infrastructure and then the Setup infrastructure, cleaning up the environment.
+
+# Navigate to the Website directory and destroy the Terraform-managed infrastructure.
 cd Website || exit
+terraform destroy
 
-terraform destroy # -auto-approve
+# Restore the original terraform.tfvars file.
+mv terraform.tfvars.bak terraform.tfvars
 
-mv -f terraform.tfvars.bak terraform.tfvars
-
-# Destroy the S3 bucket. Must be done after Website is destroyed.
+# Proceed to destroy the Setup infrastructure.
 cd ../Setup || exit
+terraform destroy
 
-terraform destroy # -auto-approve
-
-# Clean up environment.
+# Optional cleanup could be implemented here, for example:
 # cd ..
-# python supportFunctions/remove_providers.py
+# python SupportFunctions/cleanup.py

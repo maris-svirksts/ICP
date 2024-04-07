@@ -1,57 +1,64 @@
 #!/bin/bash
 
-# Check if a bucket name and state lock DynamoDB table arguments are provided.
+# This script initializes the infrastructure required for the project using Terraform and then deploys the website.
+# It requires two arguments:
+# 1. S3 bucket name for Terraform state files.
+# 2. DynamoDB table name for Terraform state locking.
+
+# Check if the required arguments are provided.
 if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: $0 <bucket-name> <dynamodb-table-name> # For <bucket-name> only lowercase alphanumeric characters, dots and hyphens allowed, for <dynamodb-table-name> only alphanumeric characters, underscores, dashes and dots allowed."
+    echo "Usage: $0 <bucket-name> <dynamodb-table-name>"
+    echo "Note: <bucket-name> should contain only lowercase alphanumeric characters, dots, and hyphens."
+    echo "<dynamodb-table-name> should contain only alphanumeric characters, underscores, dashes, and dots."
     exit 1
 fi
 
-# Prepare environment.
-python supportFunctions/preparations.py
+# Define variables for Terraform.
+TFSTATE_BUCKET_NAME="$1"
+STATE_LOCK_TABLE="$2"
 
-# Check if Python script executed successfully
+# Run Python script to prepare the environment.
+python SupportFunctions/preparations.py
+
+# Check if the Python script executed successfully.
 if [ $? -eq 0 ]; then
-    echo "Python script executed successfully. Proceeding with Terraform..."
+    echo "Python script executed successfully. Proceeding with Terraform setup..."
 
-    # Setup tfstate S3 bucket and state lock DynamoDB table.
+    # Initialize and apply Terraform configuration in the Setup directory.
     cd Setup || exit
-
     terraform init
-    terraform plan -var="tfstate_bucket_name=$1" -var="state_lock_table=$2"
-    terraform apply -var="tfstate_bucket_name=$1" -var="state_lock_table=$2" # -auto-approve # Warning: make sure that no one can change your infrastructure outside of your Terraform workflow.
+    terraform plan -var="tfstate_bucket_name=$TFSTATE_BUCKET_NAME" -var="state_lock_table=$STATE_LOCK_TABLE"
+    terraform apply -var="tfstate_bucket_name=$TFSTATE_BUCKET_NAME" -var="state_lock_table=$STATE_LOCK_TABLE"
 
-    # Capture vpc outputs
-    vpc_id=$(terraform output -raw vpc_id)
-    public_subnet_1_id=$(terraform output -raw public_subnet_1_id)
-    public_subnet_2_id=$(terraform output -raw public_subnet_2_id)
-    public_subnet_3_id=$(terraform output -raw public_subnet_3_id)
+    # Extract output variables from the Terraform setup.
+    VPC_ID=$(terraform output -raw vpc_id)
+    PUBLIC_SUBNETS=$(terraform output -json public_subnets)
 
-    # Run the main script.
+    # Navigate to the Website directory to configure and deploy the website.
     cd ../Website || exit
 
-    # Backup and then update the terraform.tfvars file.
-    cp -f terraform.tfvars terraform.tfvars.bak
-    echo "" >> terraform.tfvars # Make sure we start at a new line
-    echo "vpc_id=\"$vpc_id\"" >> terraform.tfvars
-    echo "public_subnet_1_id=\"$public_subnet_1_id\"" >> terraform.tfvars
-    echo "public_subnet_2_id=\"$public_subnet_2_id\"" >> terraform.tfvars
-    echo "public_subnet_3_id=\"$public_subnet_3_id\"" >> terraform.tfvars
+    # Backup and update the terraform.tfvars file with the new configuration.
+    cp terraform.tfvars terraform.tfvars.bak
+    {
+        echo ""
+        echo "vpc_id=\"$VPC_ID\""
+        echo "public_subnets=$PUBLIC_SUBNETS"
+    } >>terraform.tfvars
 
-    terraform init \
-        -reconfigure \
-        -backend-config="bucket=$1" \
-        -backend-config="dynamodb_table=$2"
+    # Reinitialize Terraform with the updated configuration.
+    terraform init -reconfigure -backend-config="bucket=$TFSTATE_BUCKET_NAME" -backend-config="dynamodb_table=$STATE_LOCK_TABLE"
     terraform plan
-    terraform apply \
-        -var="vpc_id=${vpc_id}" # -auto-approve
+    terraform apply
 
-    # Copy files to the webserver EFS mount point.
+    # Retrieve information for SSH connection and transfer website files to the server.
     ASG_NAME=$(terraform output -raw autoscaling_group)
     INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG_NAME" --query "AutoScalingGroups[].Instances[0].InstanceId" --output text)
     PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].PublicIpAddress' --output text)
 
-    ssh-keyscan $PUBLIC_IP >> ~/.ssh/known_hosts
-    scp -i "../../../Maris_Svirksts.pem" "../SupportFunctions/Files/index.html" "../SupportFunctions/Files/index.php" "../SupportFunctions/Files/info.php" ec2-user@$PUBLIC_IP:/var/www/html
+    # Ensure the SSH host is known.
+    ssh-keyscan $PUBLIC_IP >>~/.ssh/known_hosts
+    # Transfer files. Note: move to a better way to handle SSH files?
+    scp -i "~/.ssh/Maris_Svirksts.pem" "../SupportFunctions/Files/"* ec2-user@$PUBLIC_IP:/var/www/html
 
 else
     echo "Python script failed. Halting execution."
