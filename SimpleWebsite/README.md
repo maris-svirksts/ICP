@@ -1,60 +1,64 @@
-# AWS Simple Website Terraform Configuration
+# Web Application Deployment Framework
 
-This Terraform configuration sets up a simple web application infrastructure on AWS. It provisions an Auto Scaling Group of EC2 instances running Apache and PHP, backed by a MySQL database for storage. The infrastructure includes an Application Load Balancer (ALB) to distribute incoming traffic across the instances.
+## Overview
+
+This framework is designed for deploying a scalable and secure web application on AWS with a focus on automation and infrastructure as code (IaC) through Terraform. It simplifies the setup of AWS resources, including networking, compute, storage, and more, with an emphasis on scalability.
+
+![Diagram](Website-V1.jpg)
+
+## Project Structure
+
+- **Setup Directory (`Setup/`):** Terraform scripts for AWS foundational infrastructure like VPCs and networking.
+- **Support Functions (`SupportFunctions/`):** Utilities and Python scripts for additional setup and deployment support.
+- **Website Directory (`Website/`):** Terraform scripts for web-specific infrastructure, including EC2 instances, load balancers, and storage solutions.
+- **Control Scripts:**
+  - `start.sh`: Initiates the deployment, with parameters for specifying AWS Terraform state management resources.
+  - `destroy.sh`: Removes all resources provisioned by the framework from AWS.
 
 ## Prerequisites
 
-- AWS Account
-- Terraform installed on your local machine
-- AWS CLI installed and configured on your local machine
-- Basic knowledge of Terraform and AWS
+- An AWS account with adequate permissions.
+- Terraform and Python installed on your local system.
+- AWS CLI configured with your account credentials.
 
-## Setup Instructions
+## Configuration and Deployment
 
-1. **Clone the Repository**: Begin by cloning this repository to your local machine, or download the Terraform configuration files to a local directory.
+### Initial Setup
 
-    ```bash
-    git clone <repository-url>
-    cd <repository-directory>
-    ```
+1. **AWS CLI Configuration:** Ensure the AWS CLI is configured with credentials that have the necessary permissions.
+2. **Variable Configuration:**
+   - Copy `terraform.tfvars.example` in `Setup/` and `Website/` to `terraform.tfvars` and adjust them with your details.
 
-2. **Configure AWS Credentials**: Ensure your AWS credentials are configured properly by setting up the AWS CLI or by configuring Terraform's AWS provider with the necessary access keys and secrets.
+### Deployment with `start.sh`
 
-3. **Initialize Terraform**: Run the following command to initialize Terraform, allowing it to download necessary providers and modules.
+The `start.sh` script streamlines the deployment process, utilizing the following parameters for Terraform state management:
 
-    ```bash
-    terraform init
-    ```
+- **Terraform State S3 Bucket:** Specifies the S3 bucket to be used for storing Terraform state files.
+- **Terraform State DynamoDB Table:** Designates the DynamoDB table for state locking and consistency checking.
 
-4. **Review the Plan**: Before applying the configuration, it's good practice to review the plan and ensure everything is set up as expected.
+#### Usage
 
-    ```bash
-    terraform plan
-    ```
+```bash
+./start.sh <S3BucketName> <DynamoDBTableName>
+```
 
-5. **Apply the Configuration**: Apply the Terraform configuration to provision the resources on AWS.
+- `<S3BucketName>`: Replace with the name of a S3 bucket for Terraform state files.
+- `<DynamoDBTableName>`: Replace with the name of a DynamoDB table for Terraform state locking.
 
-    ```bash
-    terraform apply
-    ```
+**Example Command:**
 
-    Confirm the action by typing `yes` when prompted.
+```bash
+./start.sh my-terraform-state-bucket my-terraform-state-lock
+```
 
-6. **Access the Web Application**: After the infrastructure is provisioned, you can access the web application through the DNS name of the Application Load Balancer (ALB). You can find the ALB's DNS name as an output of the Terraform apply command.
+This command initializes the deployment, configuring Terraform to create the specified S3 bucket for state storage and the DynamoDB table for state locking.
 
-## Configuration Details
+### Teardown with `destroy.sh`
 
-- **AWS Provider**: Configures the AWS provider to use the `eu-north-1` region.
-- **EC2 Instances**: Provisions EC2 instances with Apache and PHP installed. Each instance also has MySQL installed for database storage. The instances are configured using user data scripts for initial setup.
-- **Application Load Balancer (ALB)**: Distributes incoming traffic across the EC2 instances to ensure high availability and load balancing.
-- **Security Groups**: Sets up security groups to allow inbound traffic on ports 22 (SSH) and 80 (HTTP) to the ALB, and configures egress to allow all outbound traffic.
-- **Auto Scaling Group**: Manages the EC2 instances, ensuring that a specified number of instances are always running and distributing them across multiple availability zones for high availability.
+To dismantle all AWS resources created by this framework:
 
-## Important Notes
+```bash
+./destroy.sh
+```
 
-- **Security**: This configuration opens port 22 (SSH) to the internet. For production environments, it's recommended to restrict SSH access to known IP addresses.
-- **Database Password**: The MySQL root password is set in the user data script. It's recommended to handle sensitive information such as passwords more securely, especially in production environments.
-- **Customization**: You can customize the configuration by editing the Terraform files. For example, you might want to change the instance type, the number of instances, or the AWS region.
-- **End Result**: The final end results will be very different and can be explained easier through the following, rough diagram:
-
-![Diagram](Website-V1.jpg)
+Ensure you've backed up any important data before executing this command, as it will irreversibly remove all deployed resources.
