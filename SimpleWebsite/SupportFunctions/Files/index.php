@@ -1,37 +1,53 @@
 <?php
-$username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
-$password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
 
-if (empty($username)) {
-    die("Username should not be empty");
-}
+require 'vendor/aws-autoloader.php';
 
-if (empty($password)) {
-    die("Password should not be empty");
-}
+use Aws\DynamoDb\Exception\DynamoDbException;
+use Aws\DynamoDb\DynamoDbClient;
 
-$host = "localhost";
-$dbusername = "DBname";
-$dbpassword = "random_root_password";
-$dbname = "youtube";
+// Set correct content type for JSON response
+header('Content-Type: application/json');
 
-// Create connection
-$conn = new mysqli($host, $dbusername, $dbpassword, $dbname);
+// Initialize DynamoDB client to use IAM Role of EC2 Instance
+$dynamoDb = new DynamoDbClient([
+    'region' => 'eu-north-1', // Specify your AWS region
+    'version' => 'latest',
+]);
 
-// Check connection
-if ($conn->connect_error) {
-    die('Connect Error (' . $conn->connect_errno . ') ' . $conn->connect_error);
-}
+$tableName = 'UserData';
 
-// Prepared statement to prevent SQL injection
-$sql = $conn->prepare("INSERT INTO register (username, password) VALUES (?, ?)");
-$sql->bind_param("ss", $username, $password);
+// Check if the request is POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Sanitize input
+    $username = strip_tags($_POST['username']);
+    $password = $_POST['password']; // No need to sanitize a password before hashing it
 
-if ($sql->execute()) {
-    echo "New record is inserted successfully";
+    // Hash password
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+    // Generate a unique ID for the primary key
+    $userId = uniqid('user_', true);
+
+    // Construct the item to insert
+    $item = [
+        'TableName' => $tableName,
+        'Item' => [
+            'UserId'    => ['S' => $userId],
+            'UserName'  => ['S' => $username],
+            'UserPass'  => ['S' => $hashedPassword],
+        ]
+    ];
+
+    try {
+        $result = $dynamoDb->putItem($item);
+        echo json_encode(['message' => 'Data saved successfully']);
+    } catch (DynamoDbException $e) {
+        // Error handling
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to save data', 'details' => $e->getMessage()]);
+    }
 } else {
-    echo "Error: " . $sql->error;
+    // Respond to non-POST requests
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
 }
-
-$sql->close();
-$conn->close();

@@ -3,7 +3,7 @@ locals {
   user_data = <<-EOF
     #!/bin/bash
     {
-      sudo yum update y
+      sudo yum update -y
       sudo yum install -y php8.2
       sudo yum install -y httpd
       sudo systemctl start httpd.service
@@ -16,6 +16,14 @@ locals {
       sudo usermod -a -G apache ec2-user
       sudo chown -R ec2-user:apache /var/www
       sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
+      # Install unzip utility
+      sudo yum install -y unzip
+      # Download AWS SDK for PHP
+      curl "https://docs.aws.amazon.com/aws-sdk-php/v3/download/aws.zip" -o "/tmp/aws.zip"
+      # Extract the SDK to /var/www/html
+      sudo unzip /tmp/aws.zip -d /var/www/html/vendor
+      # Clean up the downloaded zip file
+      sudo rm /tmp/aws.zip
       # Instance Identification
       INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
       echo "This page was created by Terraform on instance: $INSTANCE_ID" | sudo tee /var/www/html/test.html
