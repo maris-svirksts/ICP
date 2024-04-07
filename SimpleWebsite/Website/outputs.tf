@@ -9,3 +9,8 @@ output "autoscaling_group" {
   value = aws_autoscaling_group.ec2_scaler.name
   description = "Auto Scaling Group Name"
 }
+
+output "cloudfront_distribution_url" {
+  value = aws_cloudfront_distribution.distribution.domain_name
+  description = "The domain name of the CloudFront distribution"
+}
