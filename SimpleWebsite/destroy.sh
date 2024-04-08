@@ -12,7 +12,7 @@ mv terraform.tfvars.bak terraform.tfvars
 
 # Proceed to destroy the Setup infrastructure.
 cd ../Setup || exit
-terraform destroy
+terraform destroy -auto-approve
 
 # Optional cleanup could be implemented here, for example:
 # cd ..

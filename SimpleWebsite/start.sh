@@ -71,7 +71,7 @@ if [ $? -eq 0 ]; then
     # Reinitialize Terraform with the updated configuration.
     terraform init -reconfigure -backend-config="bucket=$TFSTATE_BUCKET_NAME" -backend-config="dynamodb_table=$STATE_LOCK_TABLE"
     terraform plan
-    terraform apply
+    terraform apply -auto-approve
 else
     echo "Python script failed. Halting execution."
     exit 1
