@@ -4,12 +4,10 @@
 # It requires the following named arguments:
 # --bucket-name for S3 bucket used for Terraform state files.
 # --dynamodb-table-name for DynamoDB table used for Terraform state locking.
-# --ssh-key for the SSH key file used for secure connections.
 
 # Initialize variables to empty strings
 TFSTATE_BUCKET_NAME=""
 STATE_LOCK_TABLE=""
-SSH_KEY=""
 
 # Function to process each command-line option
 process_argument() {
@@ -22,13 +20,9 @@ process_argument() {
             STATE_LOCK_TABLE="$2"
             return 2
             ;;
-        --ssh-key)
-            SSH_KEY="$2"
-            return 2
-            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 --bucket-name <bucket-name> --dynamodb-table-name <dynamodb-table-name> --ssh-key <ssh-key-path>"
+            echo "Usage: $0 --bucket-name <bucket-name> --dynamodb-table-name <dynamodb-table-name>"
             exit 1
             ;;
     esac
@@ -41,8 +35,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 # Check if the required variables are set
-if [ -z "$TFSTATE_BUCKET_NAME" ] || [ -z "$STATE_LOCK_TABLE" ] || [ -z "$SSH_KEY" ]; then
-    echo "Usage: $0 --bucket-name <bucket-name> --dynamodb-table-name <dynamodb-table-name> --ssh-key <ssh-key-path>"
+if [ -z "$TFSTATE_BUCKET_NAME" ] || [ -z "$STATE_LOCK_TABLE" ]; then
+    echo "Usage: $0 --bucket-name <bucket-name> --dynamodb-table-name <dynamodb-table-name>"
     exit 1
 fi
 
@@ -78,17 +72,6 @@ if [ $? -eq 0 ]; then
     terraform init -reconfigure -backend-config="bucket=$TFSTATE_BUCKET_NAME" -backend-config="dynamodb_table=$STATE_LOCK_TABLE"
     terraform plan
     terraform apply
-
-    # Retrieve information for SSH connection and transfer website files to the server.
-    ASG_NAME=$(terraform output -raw autoscaling_group)
-    INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG_NAME" --query "AutoScalingGroups[].Instances[0].InstanceId" --output text)
-    PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].PublicIpAddress' --output text)
-
-    # Ensure the SSH host is known.
-    ssh-keyscan $PUBLIC_IP >>~/.ssh/known_hosts
-    # Transfer files using the specified SSH key.
-    scp -i "$SSH_KEY" "../SupportFunctions/Files/"* ec2-user@$PUBLIC_IP:/var/www/html
-
 else
     echo "Python script failed. Halting execution."
     exit 1

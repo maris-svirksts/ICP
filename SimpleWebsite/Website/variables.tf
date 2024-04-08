@@ -4,6 +4,12 @@ variable "min_size" {
   default     = 1
 }
 
+variable "desired_size" {
+  description = "Desired size of the Auto Scaling Group"
+  type        = number
+  default     = 2
+}
+
 variable "max_size" {
   description = "Maximum size of the Auto Scaling Group"
   type        = number
