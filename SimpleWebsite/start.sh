@@ -1,21 +1,50 @@
 #!/bin/bash
 
 # This script initializes the infrastructure required for the project using Terraform and then deploys the website.
-# It requires two arguments:
-# 1. S3 bucket name for Terraform state files.
-# 2. DynamoDB table name for Terraform state locking.
+# It requires the following named arguments:
+# --bucket-name for S3 bucket used for Terraform state files.
+# --dynamodb-table-name for DynamoDB table used for Terraform state locking.
+# --ssh-key for the SSH key file used for secure connections.
 
-# Check if the required arguments are provided.
-if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: $0 <bucket-name> <dynamodb-table-name>"
-    echo "Note: <bucket-name> should contain only lowercase alphanumeric characters, dots, and hyphens."
-    echo "<dynamodb-table-name> should contain only alphanumeric characters, underscores, dashes, and dots."
+# Initialize variables to empty strings
+TFSTATE_BUCKET_NAME=""
+STATE_LOCK_TABLE=""
+SSH_KEY=""
+
+# Function to process each command-line option
+process_argument() {
+    case "$1" in
+        --bucket-name)
+            TFSTATE_BUCKET_NAME="$2"
+            return 2
+            ;;
+        --dynamodb-table-name)
+            STATE_LOCK_TABLE="$2"
+            return 2
+            ;;
+        --ssh-key)
+            SSH_KEY="$2"
+            return 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 --bucket-name <bucket-name> --dynamodb-table-name <dynamodb-table-name> --ssh-key <ssh-key-path>"
+            exit 1
+            ;;
+    esac
+}
+
+# Process the command-line arguments
+while [ "$#" -gt 0 ]; do
+    process_argument "$@"
+    shift $?
+done
+
+# Check if the required variables are set
+if [ -z "$TFSTATE_BUCKET_NAME" ] || [ -z "$STATE_LOCK_TABLE" ] || [ -z "$SSH_KEY" ]; then
+    echo "Usage: $0 --bucket-name <bucket-name> --dynamodb-table-name <dynamodb-table-name> --ssh-key <ssh-key-path>"
     exit 1
 fi
-
-# Define variables for Terraform.
-TFSTATE_BUCKET_NAME="$1"
-STATE_LOCK_TABLE="$2"
 
 # Run Python script to prepare the environment.
 python SupportFunctions/preparations.py
@@ -57,8 +86,8 @@ if [ $? -eq 0 ]; then
 
     # Ensure the SSH host is known.
     ssh-keyscan $PUBLIC_IP >>~/.ssh/known_hosts
-    # Transfer files. Note: move to a better way to handle SSH files?
-    scp -i "~/.ssh/Maris_Svirksts.pem" "../SupportFunctions/Files/"* ec2-user@$PUBLIC_IP:/var/www/html
+    # Transfer files using the specified SSH key.
+    scp -i "$SSH_KEY" "../SupportFunctions/Files/"* ec2-user@$PUBLIC_IP:/var/www/html
 
 else
     echo "Python script failed. Halting execution."

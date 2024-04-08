@@ -31,27 +31,42 @@ This framework is designed for deploying a scalable and secure web application o
 
 ### Deployment with `start.sh`
 
-The `start.sh` script streamlines the deployment process, utilizing the following parameters for Terraform state management:
+The `start.sh` script is designed to automate the initialization and deployment of the required infrastructure and the web application. It uses Terraform to provision resources on AWS and sets up the web application environment. The script supports the following named arguments:
 
-- **Terraform State S3 Bucket:** Specifies the S3 bucket to be used for storing Terraform state files.
-- **Terraform State DynamoDB Table:** Designates the DynamoDB table for state locking and consistency checking.
+- `--bucket-name`: Specifies the Amazon S3 bucket for storing Terraform state files.
+- `--dynamodb-table-name`: Designates the Amazon DynamoDB table for Terraform state locking and consistency checking.
+- `--ssh-key`: Provides the path to the SSH key file used for secure connections to the instances.
 
 #### Usage
 
-```bash
-./start.sh <S3BucketName> <DynamoDBTableName>
-```
-
-- `<S3BucketName>`: Replace with the name of a S3 bucket for Terraform state files.
-- `<DynamoDBTableName>`: Replace with the name of a DynamoDB table for Terraform state locking.
-
-**Example Command:**
+To deploy the application, execute `start.sh` with the necessary arguments:
 
 ```bash
-./start.sh my-terraform-state-bucket my-terraform-state-lock
+./start.sh --bucket-name <S3BucketName> --dynamodb-table-name <DynamoDBTableName> --ssh-key <SSHKeyPath>
 ```
 
-This command initializes the deployment, configuring Terraform to create the specified S3 bucket for state storage and the DynamoDB table for state locking.
+- `<S3BucketName>`: The name of your S3 bucket designated for Terraform state files.
+- `<DynamoDBTableName>`: The name of your DynamoDB table for state locking.
+- `<SSHKeyPath>`: The file path to your SSH key for secure server access.
+
+#### Example Command
+
+```bash
+./start.sh --bucket-name my-terraform-state --dynamodb-table-name my-terraform-lock --ssh-key /path/to/my/key.pem
+```
+
+This command will initiate the infrastructure setup and website deployment, utilizing the specified S3 bucket and DynamoDB table for Terraform state management and the provided SSH key for secure file transfers.
+
+#### Script Flow
+
+1. **Preparation:** Executes `preparations.py` script from `SupportFunctions/` to prepare the environment.
+2. **Terraform Initialization and Application:** In the `Setup/` directory, Terraform is initialized and applied using the provided S3 bucket and DynamoDB table names for state management.
+3. **Website Configuration and Deployment:** Moves to the `Website/` directory, updates `terraform.tfvars` with output variables from the setup phase, reinitializes Terraform, and deploys the website resources.
+4. **File Transfer:** Establishes a secure SSH connection to the provisioned EC2 instance(s) and transfers necessary files to the server.
+
+#### Post-Deployment
+
+After the deployment, verify the application's functionality and accessibility through the provided public IP addresses and URL's. The script ensures a secure connection by adding the server's IP to known hosts and uses the provided SSH key for file transfers.
 
 ### Teardown with `destroy.sh`
 

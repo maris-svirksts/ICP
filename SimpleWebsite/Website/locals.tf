@@ -24,10 +24,7 @@ locals {
       sudo unzip /tmp/aws.zip -d /var/www/html/vendor
       # Clean up the downloaded zip file
       sudo rm /tmp/aws.zip
-      # Instance Identification
-      INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
-      echo "This page was created by Terraform on instance: $INSTANCE_ID" | sudo tee /var/www/html/test.html
-    } >> /var/log/user_data.log 2>&1
+   } >> /var/log/user_data.log 2>&1
  EOF
   # Bash script for initial setup of the EC2 instance. It updates packages, installs Apache, PHP, MySQL and displays a unique page. Uses https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html to identify instance.
 }
