@@ -27,7 +27,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   period              = "300"
   statistic           = "Average"
   threshold           = "70"
-  alarm_description   = "This alarm triggers when CPU utilization exceeds 70% for 10 minutes."
+  alarm_description   = "This alarm triggers when CPU utilization exceeds 70% for 5 minutes."
   actions_enabled     = true
   alarm_actions       = [aws_autoscaling_policy.scale_up.arn]
   dimensions = {
@@ -44,7 +44,7 @@ resource "aws_cloudwatch_metric_alarm" "low_cpu" {
   period              = "300"
   statistic           = "Average"
   threshold           = "50"
-  alarm_description   = "This alarm triggers when CPU utilization falls at or below 50% for 10 minutes."
+  alarm_description   = "This alarm triggers when CPU utilization falls at or below 50% for 5 minutes."
   actions_enabled     = true
   alarm_actions       = [aws_autoscaling_policy.scale_down.arn]
   dimensions = {
