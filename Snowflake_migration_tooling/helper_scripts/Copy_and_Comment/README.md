@@ -32,7 +32,7 @@ python copy_and_comment.py [directory_path] [declaration_type] [block_type]
 
 - `directory_path`: The path to the directory containing Terraform (.tf) files to process.
 - `declaration_type`: The type of Terraform declaration to target (e.g., `resource`, `module`, `provider`).
-- `block_type`: The specific type of the Terraform declaration (e.g., `"aws_s3_bucket"`, `"google_compute_instance"`).
+- `block_type`: The specific type of the Terraform declaration (e.g., `aws_s3_bucket`, `google_compute_instance`).
 
 ## Example
 
