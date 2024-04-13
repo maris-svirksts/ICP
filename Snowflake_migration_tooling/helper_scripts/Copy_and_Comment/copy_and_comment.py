@@ -60,7 +60,12 @@ def process_file(file_path, declaration_type, block_type):
         commented_block = ['/* TODO\n'] + \
             [line for line in block] + ['*/\n\n']
         new_content.extend(commented_block)
-        new_content.extend(block)  # Include original block
+
+        # Include the comment above the block, if present
+        if lines[start - 1].startswith('#'):
+            new_content.extend(lines[start - 1])
+        # Include original block
+        new_content.extend(block)
         last_copied_index = end + 1
 
     new_content.extend(lines[last_copied_index:])
