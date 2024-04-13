@@ -39,7 +39,7 @@ python copy_and_comment.py [directory_path] [declaration_type] [block_type]
 To process all AWS S3 bucket resource declarations in Terraform files located in `/path/to/terraform/files`:
 
 ```bash
-python copy_and_comment.py /path/to/terraform/files resource aws_s3_bucket
+python copy_and_comment.py /path/to/terraform/files resource snowflake_schema_grant
 ```
 
 ## Error Handling
