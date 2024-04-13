@@ -6,7 +6,7 @@ This script is designed to process Terraform files by identifying specific decla
 
 ## Version
 
-0.9
+0.10
 
 ## Features
 
