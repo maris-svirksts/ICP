@@ -15,12 +15,12 @@ Guides to help you transition your existing infrastructure smoothly:
 
 ### Specific Block Type Changes
 Explore updates and recommended actions for deprecated block types:
-- [snowflake_grant_privileges_to_role](https://github.com/Snowflake-Labs/terraform-provider-snowflake/blob/main/docs/resources/snowflake_grant_privileges_to_role.md)
+- [snowflake_grant_privileges_to_role](snowflake_grant_privileges_to_role.md)
 
 ## Tooling for Migration
 
 Enhance your migration process with these specialized scripts:
-- [Snowflake Migration Tooling](https://github.com/maris-svirksts/ICP/tree/main/Snowflake_migration_tooling/helper_scripts/Copy_and_Comment) - Scripts designed to aid in the migration of Snowflake resources.
+- [Snowflake Migration Tooling](../helper_scripts/Copy_and_Comment/README.md) - Scripts designed to aid in the migration of Snowflake resources.
 
 ## Migration Workflow
 
