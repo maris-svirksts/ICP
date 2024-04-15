@@ -1,6 +1,6 @@
 # Snowflake on Terraform
 
-This resource serves as a comprehensive guide to assist with the migration and management of Snowflake resources using Terraform. It includes detailed documentation, migration guides, and helpful tooling resources.
+This resource serves as a guide to assist with the migration and management of Snowflake resources using Terraform. It includes documentation, migration guides, and tooling resources.
 
 ## Documentation and Guides
 
@@ -25,17 +25,40 @@ Enhance your migration process with these specialized scripts:
 ## Migration Workflow
 
 ### Local Stage
-1. **Deactivate the Backend**: Comment out the backend block from `providers.tf` to prevent Terraform from loading any state during the migration.
+1. **Deactivate the Backend**: Prevent Terraform from loading state from AWS S3 bucket during migration by commenting out the backend block in `provider.tf`.
+    ```hcl
+    # backend "s3" {    
+    #   encrypt = true
+    # }
+    ```
+
+2. **If Required, Update Snowflake Provider Version**: Ensure compatibility with the latest features and fixes by specifying the version of the Snowflake provider.
+    ```hcl
+    snowflake = {
+      source  = "Snowflake-Labs/snowflake"
+      version = "=0.88.0"
+    }
+    ```
 
 ### Prepare Environment
-1. **Initialize Terraform**: Prepare your local environment for migration operations.
+1. **Initialize Terraform**: Update the modules and plugins to their latest versions as needed by initializing the environment with the `--upgrade` option.
     ```bash
-    terraform init
+    terraform init --upgrade
     ```
 
 ### Run Plan and Save Results
-1. **Execute and Log Plan**: Ensure changes are planned correctly without any terminal color formatting, and log output to a designated file.
+1. **Execute and Log Plan**: Run the plan to ensure correct changes without terminal color formatting. Save the output to a designated file for review.
     ```bash
     export TF_CLI_ARGS="-no-color"
     terraform plan -var-file env/dev.tfvars > ../results.txt 2>&1
     ```
+
+### Branch Naming Convention
+1. **Create Branches Strategically**: Name branches according to the specific block or change being worked on to maintain clarity and organization.
+    ```plaintext
+    git checkout -b DB_Creations
+    ```
+
+### Managing Pull Requests
+1. **Initiate Pull Requests**: Once you complete changes on a specific task, initiate a pull request for review.
+2. **Merge Restrictions**: Merge commits should only be performed by designated team members, to maintain the integrity and stability of the main branch.
