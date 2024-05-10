@@ -62,3 +62,11 @@ Enhance your migration process with these specialized scripts:
 ### Managing Pull Requests
 1. **Initiate Pull Requests**: Once you complete changes on a specific task, initiate a pull request for review.
 2. **Merge Restrictions**: Merge commits should only be performed by designated team members, to maintain the integrity and stability of the main branch.
+
+## Various Links
+- [Snowflake Security Keys](https://docs.snowflake.com/en/user-guide/key-pair-auth) - Key-pair authentication and key-pair rotation.
+- [Terratest](https://github.com/gruntwork-io/terratest) - Go library that makes it easier to write automated tests for your infrastructure code. It provides a variety of helper functions and patterns for common infrastructure testing tasks.
+- [Terraform merge Function](https://developer.hashicorp.com/terraform/language/functions/merge) - takes an arbitrary number of maps or objects, and returns a single map or object that contains a merged set of elements from all arguments.
+- [Terraform flatten Function](https://developer.hashicorp.com/terraform/language/functions/flatten) - takes a list and replaces any elements that are lists with a flattened sequence of the list contents.
+- [Terraform Conditional Expressions](https://developer.hashicorp.com/terraform/language/expressions/conditionals) - the condition can be any expression that resolves to a boolean value. This will usually be an expression that uses the equality, comparison, or logical operators.
+- [Terraform lookup Function](https://developer.hashicorp.com/terraform/language/functions/lookup) - retrieves the value of a single element from a map, given its key. If the given key does not exist, the given default value is returned instead.
