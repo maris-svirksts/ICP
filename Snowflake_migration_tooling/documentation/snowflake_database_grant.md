@@ -2,9 +2,9 @@
 
 ### Original Configuration
 ```hcl
-resource snowflake_grant_privileges_to_role <name> {
+resource snowflake_database_grant <name> {
     ...
-    role_name = var.pla_admin_role
+    roles = [var.pla_admin_role]
     ...
 }
 ```
@@ -18,19 +18,26 @@ resource snowflake_grant_privileges_to_account_role <name> {
 }
 ```
 
+```hcl
+resource snowflake_grant_privileges_to_share <name> {
+    ...
+}
+```
+
 ### Changes Summary
 
 #### New Attributes
 - `always_apply`: New attribute for applying changes.
 - `always_apply_trigger`: New helper field, should not be set.
 
-#### Renamed Attributes
-- `role_name` changed to `account_role_name`.
+#### Removed Attributes
+- `enable_multiple_grants`: Multiple grants of the same type.
+- `revert_ownership_to_role_name`: The name of the role to revert ownership to on destroy.
 
-#### Attribute Modifications
-    - `on_account_object`
-        - `object_type`:
-            - **Additional Value Available**: `COMPUTE POOL`.
+#### Renamed Attributes
+- `roles` changed to `account_role_name`.
+- `privilege` changed to `privileges`.
+- `database_name` changed to `on_account_object`.
 
 ### Related Resources
 - [snowflake_database_grant](https://registry.terraform.io/providers/Snowflake-Labs/snowflake/latest/docs/resources/database_grant)
