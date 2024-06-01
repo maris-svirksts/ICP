@@ -20,28 +20,56 @@ resource "aws_codeartifact_repository" "artifact_repo" {
   domain     = aws_codeartifact_domain.artifact_domain.domain
 }
 
+data "aws_codeartifact_authorization_token" "auth_token" {
+  domain  = aws_codeartifact_domain.artifact_domain.domain
+  duration_seconds = 900
+}
+
 # S3 Bucket for Artifacts
 resource "aws_s3_bucket" "artifact_bucket" {
   bucket = "artifact-bucket"
 }
 
-# Lambda Function for S3 Trigger
-resource "aws_lambda_function" "s3_trigger_lambda" {
-  function_name = "S3TriggerLambda"
-  s3_bucket     = "lambda-code-bucket"
-  s3_key        = "s3-trigger-lambda.zip"
-  handler       = "index.handler"
-  runtime       = "nodejs14.x"
-  role          = aws_iam_role.lambda_exec_role.arn
+# IAM Role for CodeBuild
+resource "aws_iam_role" "codebuild_service_role" {
+  name = "codebuild_service_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "codebuild.amazonaws.com"
+      }
+    }]
+  })
 }
 
-resource "aws_s3_bucket_notification" "s3_notification" {
-  bucket = aws_s3_bucket.artifact_bucket.bucket
+resource "aws_iam_role_policy_attachment" "codebuild_policy_attach" {
+  role       = aws_iam_role.codebuild_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
+}
 
-  lambda_function {
-    lambda_function_arn = aws_lambda_function.s3_trigger_lambda.arn
-    events              = ["s3:ObjectCreated:*"]
-  }
+# IAM Role for CodeDeploy
+resource "aws_iam_role" "codedeploy_service_role" {
+  name = "codedeploy_service_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "codedeploy.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "codedeploy_policy_attach" {
+  role       = aws_iam_role.codedeploy_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
 }
 
 # IAM Role for Lambda
@@ -63,6 +91,27 @@ resource "aws_iam_role" "lambda_exec_role" {
 resource "aws_iam_role_policy_attachment" "lambda_policy_attach" {
   role       = aws_iam_role.lambda_exec_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# IAM Role for CodePipeline
+resource "aws_iam_role" "codepipeline_service_role" {
+  name = "codepipeline_service_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "codepipeline.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
+  role       = aws_iam_role.codepipeline_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodePipelineFullAccess"
 }
 
 # CodeBuild Project
