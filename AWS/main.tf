@@ -28,12 +28,14 @@ module "ec2" {
   availability_zones  = ["us-west-2a"]
 }
 
-module "elb" {
-  source              = "./modules/elb"
-  elb_name            = "example-elb"
-  availability_zones  = ["us-west-2a"]
-  instances           = [module.ec2.instance_id]
-}
+/*module "alb" {
+  source           = "./modules/alb"
+  alb_name         = "example-alb"
+  security_groups  = ["sg-0123456789abcdef0"]  # Replace with security group IDs
+  subnets          = ["subnet-0123456789abcdef0"]  # Replace with subnet IDs
+  vpc_id           = "vpc-0123456789abcdef0"  # Replace with VPC ID
+  instance_id      = module.ec2.instance_id
+}*/
 
 module "codebuild" {
   source           = "./modules/codebuild"
@@ -51,7 +53,7 @@ module "codedeploy" {
   deployment_group_name= "example-deployment-group"
   service_role_arn     = module.codedeploy.codedeploy_service_role_arn
   ec2_instance_tag     = "example-ec2-instance"
-  elb_name             = module.elb.elb_name
+  # elb_name             = module.elb.elb_name
 }
 
 module "codepipeline" {
