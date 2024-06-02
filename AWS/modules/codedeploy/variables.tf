@@ -18,7 +18,7 @@ variable "ec2_instance_tag" {
   type        = string
 }
 
-variable "elb_name" {
+/*variable "elb_name" {
   description = "Name of the Elastic Load Balancer"
   type        = string
-}
+}*/
