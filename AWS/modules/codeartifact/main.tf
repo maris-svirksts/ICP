@@ -7,16 +7,14 @@ resource "aws_codeartifact_repository" "repository" {
   domain     = aws_codeartifact_domain.domain.domain
 }
 
+data "aws_iam_policy_document" "codeartifact_policy" {
+  statement {
+    actions   = ["codeartifact:*"]
+    resources = ["*"]
+  }
+}
+
 resource "aws_codeartifact_domain_permissions_policy" "policy" {
-  domain      = aws_codeartifact_domain.domain.domain
-  policy_document = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = "codeartifact:*",
-        Resource = "*"
-      },
-    ],
-  })
+  domain          = aws_codeartifact_domain.domain.domain
+  policy_document = data.aws_iam_policy_document.codeartifact_policy.json
 }
