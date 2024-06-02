@@ -14,11 +14,11 @@ resource "aws_codedeploy_deployment_group" "group" {
       value = var.ec2_instance_tag
     }
   }
-  load_balancer_info {
+  /*load_balancer_info {
     elb_info {
       name = var.elb_name
     }
-  }
+  }*/
 }
 
 resource "aws_iam_role" "codedeploy_service_role" {
