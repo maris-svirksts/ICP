@@ -42,7 +42,6 @@ terraform.rc
 
 # dotenv environment files
 .env
-.env.*
 
 # AWS credentials
 .aws/
