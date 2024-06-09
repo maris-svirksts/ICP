@@ -6,10 +6,10 @@ resources:
   - ${file(config/resources/vpc.yml)}
   - ${file(config/resources/subnets.yml)}
   - ${file(config/resources/nat_gateway.yml)}
-  - ${file(config/resources/ecs.yml)}
   - ${file(config/resources/security_group.yml)}
-  - ${file(config/resources/alb.yml)}
   - ${file(config/resources/roles.yml)}
+  - ${file(config/resources/alb.yml)}
+  - ${file(config/resources/ecs.yml)}
   - ${file(config/resources/logging.yml)}
   - ${file(config/resources/autoscaling.yml)}
 functions: ${file(config/functions.yml)}

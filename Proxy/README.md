@@ -1,13 +1,10 @@
 Requirements:
-AWS CLI (or other option)
+- AWS CLI (or other option)
+- Docker
+- Serverless
 
 **Debug:**
 - serverless deploy --debug
-
-plugins:
-  - serverless-dotenv-plugin
-
-to useDotenv: true
 
 File structure
 ```

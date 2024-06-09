@@ -26,7 +26,7 @@ Resources:
                 - .amazonaws.com/nginx-proxy:latest
           Essential: true
           PortMappings:
-            - ContainerPort: 443
+            - ContainerPort: 80
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -39,6 +39,10 @@ Resources:
 
   ECSService:
     Type: AWS::ECS::Service
+    DependsOn:
+      - ECSALB
+      - ALBListener
+      - ALBTargetGroup
     Properties:
       Cluster:
         Ref: ECSCluster
@@ -48,7 +52,7 @@ Resources:
       LaunchType: FARGATE
       LoadBalancers:
         - ContainerName: nginx-proxy
-          ContainerPort: 443
+          ContainerPort: 80
           TargetGroupArn:
             Ref: ALBTargetGroup
       NetworkConfiguration:
