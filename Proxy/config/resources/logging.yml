@@ -1,0 +1,67 @@
+Resources:
+  LoggingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ${self:service}-logging-bucket
+      AccessControl: LogDeliveryWrite
+      VersioningConfiguration:
+        Status: Enabled
+
+  LoadBalancerLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: 
+        Ref: LoggingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "delivery.logs.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:s3:::"
+                  - Ref: LoggingBucket
+                  - "/*"
+
+  TaskLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/nginx-proxy
+      RetentionInDays: 30
+
+  CloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ECSHighCPUUtilization
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value:
+            Ref: ECSCluster
+        - Name: ServiceName
+          Value:
+            Ref: ECSService
+      AlarmActions:
+        - Ref: AlarmNotificationTopic
+
+  AlarmNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ECSAlarmNotificationTopic
+
+  AlarmNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: ${env:ALARM_EMAIL}
+      Protocol: email
+      TopicArn:
+        Ref: AlarmNotificationTopic
