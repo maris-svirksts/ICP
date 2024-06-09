@@ -1,0 +1,7 @@
+service: nginx-proxy-service
+
+provider: ${file(config/provider.yml)}
+custom: ${file(config/custom.yml)}
+resources: ${file(config/resources.yml)}
+functions: ${file(config/functions.yml)}
+useDotenv: true

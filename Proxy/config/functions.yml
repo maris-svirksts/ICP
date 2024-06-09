@@ -1,0 +1,7 @@
+dockerBuild:
+  image:
+    name: nginx-proxy
+  events:
+    - http:
+        path: hello
+        method: get
