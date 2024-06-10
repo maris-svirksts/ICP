@@ -1,30 +1,4 @@
 Resources:
-  LoggingBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: ${self:service}-logging-bucket
-      VersioningConfiguration:
-        Status: Enabled
-
-  LoadBalancerLogsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: 
-        Ref: LoggingBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: "delivery.logs.amazonaws.com"
-            Action: "s3:PutObject"
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:aws:s3:::"
-                  - Ref: LoggingBucket
-                  - "/*"
-
   TaskLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
