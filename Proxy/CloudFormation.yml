@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with load balancers, streaming protocol support, CloudWatch logging, Elastic IP, and CloudFront.
+Description: CloudFormation template for a Fargate-based proxy service with load balancers, streaming protocol support, CloudWatch logging, and Elastic IP.
 
 Parameters:
   VpcId:
@@ -151,59 +151,10 @@ Resources:
       Port: 80
       Protocol: HTTP
 
-  CloudFrontOriginAccessIdentity:
-    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
-    Properties:
-      CloudFrontOriginAccessIdentityConfig:
-        Comment: Access Identity for CloudFront
-
-  CloudFrontDistribution:
-    Type: 'AWS::CloudFront::Distribution'
-    Properties:
-      DistributionConfig:
-        Origins:
-          - Id: proxy-lb-origin
-            DomainName: !GetAtt LoadBalancer.DNSName
-            CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginProtocolPolicy: http-only
-        Enabled: true
-        DefaultCacheBehavior:
-          AllowedMethods: 
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - POST
-            - PATCH
-            - DELETE
-          CachedMethods: 
-            - GET
-            - HEAD
-            - OPTIONS
-          TargetOriginId: proxy-lb-origin
-          ForwardedValues:
-            QueryString: true
-            Headers:
-              - Authorization
-              - Host
-            Cookies:
-              Forward: all
-          ViewerProtocolPolicy: redirect-to-https
-        PriceClass: PriceClass_100
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
-        DefaultRootObject: index.html
-
 Outputs:
   LoadBalancerDNSName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
-
-  CloudFrontDomainName:
-    Description: CloudFront distribution domain name
-    Value: !GetAtt CloudFrontDistribution.DomainName
 
   ElasticIP:
     Description: The allocated Elastic IP
