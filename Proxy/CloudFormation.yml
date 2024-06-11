@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with load balancers, streaming protocol support, CloudWatch logging, and Elastic IP.
+Description: CloudFormation template for a Fargate-based proxy service with load balancers, streaming protocol support, CloudWatch logging, Elastic IP, and CloudFront.
 
 Parameters:
   VpcId:
@@ -151,10 +151,55 @@ Resources:
       Port: 80
       Protocol: HTTP
 
+  CloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: Access Identity for CloudFront
+
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: proxy-lb-origin
+            DomainName: !GetAtt LoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: match-viewer
+        Enabled: true
+        DefaultCacheBehavior:
+          AllowedMethods: 
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods: 
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: proxy-lb-origin
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
 Outputs:
   LoadBalancerDNSName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
+
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt CloudFrontDistribution.DomainName
 
   ElasticIP:
     Description: The allocated Elastic IP
