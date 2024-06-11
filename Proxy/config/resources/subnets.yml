@@ -5,11 +5,11 @@ Resources:
       VpcId:
         Ref: VPC
       CidrBlock: ${self:custom.publicSubnetCidr1}
-      MapPublicIpOnLaunch: true
       AvailabilityZone:
         Fn::Select:
           - '0'
           - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: nginx-proxy-public-subnet-1
@@ -20,11 +20,11 @@ Resources:
       VpcId:
         Ref: VPC
       CidrBlock: ${self:custom.publicSubnetCidr2}
-      MapPublicIpOnLaunch: true
       AvailabilityZone:
         Fn::Select:
           - '1'
           - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: nginx-proxy-public-subnet-2
@@ -39,6 +39,7 @@ Resources:
         Fn::Select:
           - '0'
           - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: nginx-proxy-private-subnet-1
@@ -53,6 +54,7 @@ Resources:
         Fn::Select:
           - '1'
           - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: nginx-proxy-private-subnet-2

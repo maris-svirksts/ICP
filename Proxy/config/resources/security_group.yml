@@ -2,8 +2,8 @@ Resources:
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable NGINX access
-      VpcId: 
+      GroupDescription: Allow HTTP and HTTPS traffic
+      VpcId:
         Ref: VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -13,7 +13,4 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: -1
           CidrIp: 0.0.0.0/0

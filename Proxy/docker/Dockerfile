@@ -4,7 +4,8 @@ FROM nginx:latest
 # Copy custom Nginx configuration file
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 443 for HTTPS
+# Expose ports 80 and 443 for HTTP and HTTPS
+EXPOSE 80
 EXPOSE 443
 
 # Start Nginx

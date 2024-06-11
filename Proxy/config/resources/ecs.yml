@@ -27,6 +27,7 @@ Resources:
           Essential: true
           PortMappings:
             - ContainerPort: 80
+            - ContainerPort: 443
           LogConfiguration:
             LogDriver: awslogs
             Options:
