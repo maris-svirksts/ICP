@@ -1,116 +1,142 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Serverless proxy setup using API Gateway and Lambda.
-
-Parameters:
-  ApiName:
-    Type: String
-    Default: proxy-api
-    Description: Name of the API Gateway
+Description: CloudFormation template to create a robust proxy server using API Gateway and Lambda with an Elastic IP address.
 
 Resources:
-  ProxyApi:
-    Type: 'AWS::ApiGateway::RestApi'
+  ElasticIP:
+    Type: AWS::EC2::EIP
     Properties:
-      Name: !Ref ApiName
+      Domain: vpc
 
-  ProxyResource:
-    Type: 'AWS::ApiGateway::Resource'
+  VPC:
+    Type: AWS::EC2::VPC
     Properties:
-      ParentId: !GetAtt ProxyApi.RootResourceId
-      PathPart: '{proxy+}'
-      RestApiId: !Ref ProxyApi
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
 
-  ProxyMethod:
-    Type: 'AWS::ApiGateway::Method'
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      AuthorizationType: NONE
-      HttpMethod: ANY
-      ResourceId: !Ref ProxyResource
-      RestApiId: !Ref ProxyApi
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProxyLambdaFunction.Arn}/invocations
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
 
-  ProxyLambdaFunction:
-    Type: 'AWS::Lambda::Function'
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
     Properties:
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: nodejs14.x
-      Code:
-        ZipFile: |
-          const https = require('https');
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
 
-          exports.handler = async (event) => {
-            const options = {
-              hostname: event.headers['Host'],
-              port: 443,
-              path: event.path,
-              method: event.httpMethod,
-              headers: event.headers,
-            };
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
 
-            return new Promise((resolve, reject) => {
-              const req = https.request(options, (res) => {
-                let body = '';
-                res.on('data', (chunk) => {
-                  body += chunk;
-                });
-                res.on('end', () => {
-                  resolve({
-                    statusCode: res.statusCode,
-                    headers: res.headers,
-                    body: body,
-                  });
-                });
-              });
+  Route:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
 
-              req.on('error', (e) => {
-                reject({
-                  statusCode: 500,
-                  body: 'Error: ' + e.message,
-                });
-              });
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
 
-              if (event.body) {
-                req.write(event.body);
-              }
-              req.end();
-            });
-          };
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      AllocationId: !GetAtt ElasticIP.AllocationId
 
   LambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
         Version: '2012-10-17'
-        Statement:
+        Statement: 
           - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaPolicy
-          PolicyDocument:
+            Principal: 
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Policies: 
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument: 
             Version: '2012-10-17'
-            Statement:
+            Statement: 
               - Effect: Allow
-                Action:
+                Action: 
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: '*'
+                Resource: 'arn:aws:logs:*:*:*'
 
-  ApiGatewayInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+  ProxyFunction:
+    Type: AWS::Lambda::Function
     Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import urllib3
+
+          def handler(event, context):
+              http = urllib3.PoolManager()
+              response = http.request(
+                  method=event['httpMethod'],
+                  url=event['queryStringParameters']['targetUrl'],
+                  headers=event['headers'],
+                  body=event['body']
+              )
+              return {
+                  'statusCode': response.status,
+                  'headers': dict(response.headers),
+                  'body': response.data.decode('utf-8')
+              }
+      Runtime: python3.9
+      Timeout: 300
+
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: proxy-api
+
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: proxy
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      ResourceId: !Ref ApiGatewayResource
+      RestApiId: !Ref ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProxyFunction.Arn}/invocations
+
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProxyFunction
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt ProxyLambdaFunction.Arn
       Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/*/proxy
 
 Outputs:
   ApiEndpoint:
-    Description: "URL of the API Gateway"
-    Value: !Sub "https://${ProxyApi}.execute-api.${AWS::Region}.amazonaws.com/prod/{proxy+}"
+    Description: "The endpoint of the proxy API"
+    Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/proxy"
