@@ -57,7 +57,7 @@ Resources:
             Ref: ALBTargetGroup
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
+          AssignPublicIp: DISABLED
           Subnets:
             - Ref: PrivateSubnet1
             - Ref: PrivateSubnet2
