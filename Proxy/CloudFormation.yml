@@ -101,7 +101,7 @@ Resources:
                   'headers': dict(response.headers),
                   'body': response.data.decode('utf-8')
               }
-      Runtime: python3.9
+      Runtime: python3.10
       Timeout: 300
 
   ApiGatewayRestApi:
@@ -140,3 +140,7 @@ Outputs:
   ApiEndpoint:
     Description: "The endpoint of the proxy API"
     Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/proxy"
+
+  ElasticIP:
+    Description: "The Elastic IP address"
+    Value: !Ref ElasticIP
