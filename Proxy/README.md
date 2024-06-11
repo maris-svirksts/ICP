@@ -1,7 +1,13 @@
 Requirements:
 - AWS CLI (or other option)
 - Docker
-- Serverless
+- Serverless V3
+
+**Install**
+`npm install -g serverless@3`
+
+**Verify**
+`serverless --version`
 
 **Debug:**
 - serverless deploy --debug
