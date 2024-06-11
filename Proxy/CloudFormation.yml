@@ -167,7 +167,7 @@ Resources:
             CustomOriginConfig:
               HTTPPort: 80
               HTTPSPort: 443
-              OriginProtocolPolicy: match-viewer
+              OriginProtocolPolicy: http-only
         Enabled: true
         DefaultCacheBehavior:
           AllowedMethods: 
@@ -184,13 +184,17 @@ Resources:
             - OPTIONS
           TargetOriginId: proxy-lb-origin
           ForwardedValues:
-            QueryString: false
+            QueryString: true
+            Headers:
+              - Authorization
+              - Host
             Cookies:
-              Forward: none
+              Forward: all
           ViewerProtocolPolicy: redirect-to-https
         PriceClass: PriceClass_100
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
+        DefaultRootObject: index.html
 
 Outputs:
   LoadBalancerDNSName:
