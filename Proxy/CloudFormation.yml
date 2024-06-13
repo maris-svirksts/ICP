@@ -82,7 +82,8 @@ Resources:
             - /bin/sh
             - -c
             - |
-              echo '
+              cat <<EOF > /etc/nginx/nginx.conf
+              events {}
               stream {
                   upstream backend {
                       server ${ELASTIC_IP}:443;
@@ -99,7 +100,7 @@ Resources:
                       proxy_pass rtmp_backend;
                   }
               }
-              ' > /etc/nginx/nginx.conf &&
+              EOF
               nginx -g 'daemon off;'
 
   Service:
