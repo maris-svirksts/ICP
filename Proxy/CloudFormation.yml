@@ -5,12 +5,19 @@ Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC Id
+    Default: vpc-0897a9f3de7e213c0 # growthos-discover-data-sandbox-vpc
   SubnetOne:
     Type: AWS::EC2::Subnet::Id
     Description: Subnet Id for the first subnet
+    Default: subnet-01c1e6167c10cd939 # growthos-discover-data-sandbox-vpc GWDATAPublicSubnet1
   SubnetTwo:
     Type: AWS::EC2::Subnet::Id
     Description: Subnet Id for the second subnet
+    Default: subnet-0ab49b33aca6b7531 # growthos-discover-data-sandbox-vpc GWDATAPublicSubnet2
+  ApiEndpoint:
+    Type: String
+    Description: The API endpoint to forward requests to.
+    Default: 3nfgzb9txa.execute-api.eu-west-1.amazonaws.com # Replace with live endpoint
 
 Resources:
   ElasticIP:
@@ -77,7 +84,7 @@ Resources:
               awslogs-stream-prefix: proxy
           Environment:
             - Name: API_ENDPOINT
-              Value: "3nfgzb9txa.execute-api.eu-west-1.amazonaws.com"
+              Value: !Ref ApiEndpoint
           Command:
             - /bin/sh
             - -c
@@ -194,3 +201,7 @@ Outputs:
   ElasticIP:
     Description: The allocated Elastic IP
     Value: !Ref ElasticIP
+
+  ApiEndpoint:
+    Description: The API endpoint the proxy forwards requests to
+    Value: !Ref ApiEndpoint
