@@ -13,10 +13,10 @@ Parameters:
     Description: Subnet Id for the second subnet
 
 Resources:
-  # ElasticIP:
-  #   Type: 'AWS::EC2::EIP'
-  #   Properties:
-  #     Domain: vpc
+  ElasticIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
 
   TaskExecutionRole:
     Type: 'AWS::IAM::Role'
@@ -75,15 +75,18 @@ Resources:
               awslogs-group: /aws/ecs/proxy-service
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: proxy
+          Environment:
+            - Name: ELASTIC_IP
+              Value: !Ref ElasticIP
           Command:
             - /bin/sh
             - -c
             - |
               echo '
               server {
-                  listen 443 ssl;
-                  location / {
-                      proxy_pass https://3nfgzb9txa.execute-api.eu-west-1.amazonaws.com/proxy;
+                  listen 443;
+                  location /proxy/ {
+                      proxy_pass https://$ELASTIC_IP;
                       proxy_set_header Host $host;
                       proxy_set_header X-Real-IP $remote_addr;
                       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -92,8 +95,8 @@ Resources:
               }
               server {
                   listen 1935;
-                  location / {
-                      proxy_pass https://3nfgzb9txa.execute-api.eu-west-1.amazonaws.com/proxy;
+                  location /proxy/ {
+                      proxy_pass https://$ELASTIC_IP;
                       proxy_set_header Host $host;
                       proxy_set_header X-Real-IP $remote_addr;
                       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -191,6 +194,6 @@ Outputs:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
 
-  # ElasticIP:
-  #   Description: The allocated Elastic IP
-  #   Value: !Ref ElasticIP
+  ElasticIP:
+    Description: The allocated Elastic IP
+    Value: !Ref ElasticIP
