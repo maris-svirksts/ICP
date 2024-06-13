@@ -100,6 +100,9 @@ Resources:
               awslogs-group: /aws/ecs/proxy-service
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: proxy
+          MountPoints:
+            - SourceVolume: nginx-logs
+              ContainerPath: /var/log/nginx
           Environment:
             - Name: API_ENDPOINT
               Value: !Ref ApiEndpoint
@@ -119,14 +122,22 @@ Resources:
                   server {
                       listen 443;
                       proxy_pass backend_https;
+                      error_log /var/log/nginx/error.log;
+                      access_log /var/log/nginx/access.log;
                   }
                   server {
                       listen 1935;
                       proxy_pass backend_rtmp;
+                      error_log /var/log/nginx/error.log;
+                      access_log /var/log/nginx/access.log;
                   }
               }
               EOF
               nginx -g 'daemon off;'
+      Volumes:
+        - Name: nginx-logs
+          Host:
+            SourcePath: /
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
