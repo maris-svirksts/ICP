@@ -76,8 +76,8 @@ Resources:
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: proxy
           Environment:
-            - Name: ELASTIC_IP
-              Value: !Ref ElasticIP
+            - Name: API_ENDPOINT
+              Value: "3nfgzb9txa.execute-api.eu-west-1.amazonaws.com"
           Command:
             - /bin/sh
             - -c
@@ -85,19 +85,19 @@ Resources:
               cat <<EOF > /etc/nginx/nginx.conf
               events {}
               stream {
-                  upstream backend {
-                      server ${ELASTIC_IP}:443;
+                  upstream backend_https {
+                      server ${API_ENDPOINT}:443;
                   }
                   server {
                       listen 443;
-                      proxy_pass backend;
+                      proxy_pass backend_https;
                   }
-                  upstream rtmp_backend {
-                      server ${ELASTIC_IP}:1935;
+                  upstream backend_rtmp {
+                      server ${API_ENDPOINT}:1935;
                   }
                   server {
                       listen 1935;
-                      proxy_pass rtmp_backend;
+                      proxy_pass backend_rtmp;
                   }
               }
               EOF
