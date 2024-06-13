@@ -100,9 +100,6 @@ Resources:
               awslogs-group: /aws/ecs/proxy-service
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: proxy
-          MountPoints:
-            - SourceVolume: nginx-logs
-              ContainerPath: /var/log/nginx
           Environment:
             - Name: API_ENDPOINT
               Value: !Ref ApiEndpoint
@@ -113,6 +110,11 @@ Resources:
               cat <<EOF > /etc/nginx/nginx.conf
               events {}
               stream {
+                  log_format main '\$remote_addr [\$time_local] "\$protocol" '
+                                    '\$status \$bytes_sent "\$session_time" '
+                                    '"\$upstream_addr" "\$upstream_bytes_sent" "\$upstream_connect_time"';
+                  access_log /dev/stdout main;
+                  error_log /dev/stderr warn;
                   upstream backend_https {
                       server ${API_ENDPOINT}:443;
                   }
@@ -122,25 +124,14 @@ Resources:
                   server {
                       listen 443;
                       proxy_pass backend_https;
-                      error_log /var/log/nginx/error.log;
-                      access_log /var/log/nginx/access.log;
                   }
                   server {
                       listen 1935;
                       proxy_pass backend_rtmp;
-                      error_log /var/log/nginx/error.log;
-                      access_log /var/log/nginx/access.log;
                   }
               }
               EOF
               nginx -g 'daemon off;'
-      Volumes:
-        - Name: nginx-logs
-          Host:
-            SourcePath: /
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   Service:
     Type: 'AWS::ECS::Service'
@@ -229,9 +220,6 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
       Protocol: TCP
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   ListenerRTMP:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
@@ -242,9 +230,6 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 1935
       Protocol: TCP
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
 Outputs:
   LoadBalancerDNSName:
