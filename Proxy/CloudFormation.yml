@@ -18,6 +18,14 @@ Parameters:
     Type: String
     Description: The API endpoint to forward requests to.
     Default: 3nfgzb9txa.execute-api.eu-west-1.amazonaws.com # Replace with live endpoint
+  EnableHTTPS:
+    Type: String
+    Description: Flag to enable or disable HTTPS (443) port configuration (true/false)
+    Default: true
+  EnableRTMP:
+    Type: String
+    Description: Flag to enable or disable RTMP (1935) port configuration (true/false)
+    Default: false
   Environment:
     Type: String
     Description: Environment tag for the resources
@@ -90,10 +98,18 @@ Resources:
           Image: nginx
           Essential: true
           PortMappings:
-            - ContainerPort: 443
-              Protocol: tcp
-            - ContainerPort: 1935
-              Protocol: tcp
+            - !If 
+              - EnableHTTPSCondition
+              - 
+                ContainerPort: 443
+                Protocol: tcp
+              - !Ref "AWS::NoValue"
+            - !If 
+              - EnableRTMPCondition
+              - 
+                ContainerPort: 1935
+                Protocol: tcp
+              - !Ref "AWS::NoValue"
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -121,10 +137,12 @@ Resources:
                   upstream backend_rtmp {
                       server ${API_ENDPOINT}:1935;
                   }
+                  # If EnableHTTPS is true
                   server {
                       listen 443;
                       proxy_pass backend_https;
                   }
+                  # If EnableRTMP is true
                   server {
                       listen 1935;
                       proxy_pass backend_rtmp;
@@ -145,12 +163,20 @@ Resources:
         MaximumPercent: 200
         MinimumHealthyPercent: 50
       LoadBalancers:
-        - ContainerName: proxy-container
-          ContainerPort: 443
-          TargetGroupArn: !Ref TargetGroupHTTPS
-        - ContainerName: proxy-container
-          ContainerPort: 1935
-          TargetGroupArn: !Ref TargetGroupRTMP
+        - !If
+          - EnableHTTPSCondition
+          - 
+            ContainerName: proxy-container
+            ContainerPort: 443
+            TargetGroupArn: !Ref TargetGroupHTTPS
+          - !Ref "AWS::NoValue"
+        - !If
+          - EnableRTMPCondition
+          - 
+            ContainerName: proxy-container
+            ContainerPort: 1935
+            TargetGroupArn: !Ref TargetGroupRTMP
+          - !Ref "AWS::NoValue"
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
@@ -169,14 +195,22 @@ Resources:
       GroupDescription: Enable HTTPS and RTMP
       VpcId: !Ref VpcId
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 1935
-          ToPort: 1935
-          CidrIp: 0.0.0.0/0
+        - !If
+          - EnableHTTPSCondition
+          - 
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - !Ref "AWS::NoValue"
+        - !If
+          - EnableRTMPCondition
+          - 
+            IpProtocol: tcp
+            FromPort: 1935
+            ToPort: 1935
+            CidrIp: 0.0.0.0/0
+          - !Ref "AWS::NoValue"
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -196,6 +230,7 @@ Resources:
 
   TargetGroupHTTPS:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Condition: EnableHTTPSCondition
     Properties:
       Name: proxy-target-group-https
       Port: 443
@@ -210,6 +245,7 @@ Resources:
 
   TargetGroupRTMP:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Condition: EnableRTMPCondition
     Properties:
       Name: proxy-target-group-rtmp
       Port: 1935
@@ -224,6 +260,7 @@ Resources:
 
   ListenerHTTPS:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: EnableHTTPSCondition
     Properties:
       DefaultActions:
         - Type: forward
@@ -234,6 +271,7 @@ Resources:
 
   ListenerRTMP:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: EnableRTMPCondition
     Properties:
       DefaultActions:
         - Type: forward
@@ -241,6 +279,10 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 1935
       Protocol: TCP
+
+Conditions:
+  EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, true]
+  EnableRTMPCondition: !Equals [!Ref EnableRTMP, true]
 
 Outputs:
   LoadBalancerDNSName:
