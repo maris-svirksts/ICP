@@ -140,6 +140,17 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       DesiredCount: 1
       LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 60
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      LoadBalancers:
+        - ContainerName: proxy-container
+          ContainerPort: 443
+          TargetGroupArn: !Ref TargetGroupHTTPS
+        - ContainerName: proxy-container
+          ContainerPort: 1935
+          TargetGroupArn: !Ref TargetGroupRTMP
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
