@@ -21,15 +21,19 @@ Parameters:
   EnableHTTPS:
     Type: String
     Description: Flag to enable or disable HTTPS (443) port configuration (true/false)
-    Default: true
+    Default: "true"
   EnableRTMP:
     Type: String
     Description: Flag to enable or disable RTMP (1935) port configuration (true/false)
-    Default: false
+    Default: "false"
   Environment:
     Type: String
     Description: Environment tag for the resources
     Default: sandbox
+
+Conditions:
+  EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, true]
+  EnableRTMPCondition: !Equals [!Ref EnableRTMP, true]
 
 Resources:
   ElasticIP:
@@ -79,6 +83,105 @@ Resources:
     Type: 'AWS::ECS::Cluster'
     Properties: 
       ClusterName: proxy-cluster
+      Tags:
+        - Key: growthos:environment
+          Value: !Ref Environment
+
+  LoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: proxy-nlb
+      Subnets:
+        - !Ref SubnetOne
+        - !Ref SubnetTwo
+      Scheme: internet-facing
+      Type: network
+      Tags:
+        - Key: growthos:environment
+          Value: !Ref Environment
+
+  TargetGroupHTTPS:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Condition: EnableHTTPSCondition
+    Properties:
+      Name: proxy-target-group-https
+      Port: 443
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      HealthCheckProtocol: TCP
+      HealthCheckPort: '443'
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      TargetType: ip
+      Tags:
+        - Key: growthos:environment
+          Value: !Ref Environment
+
+  TargetGroupRTMP:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Condition: EnableRTMPCondition
+    Properties:
+      Name: proxy-target-group-rtmp
+      Port: 1935
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      HealthCheckProtocol: TCP
+      HealthCheckPort: '1935'
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      TargetType: ip
+      Tags:
+        - Key: growthos:environment
+          Value: !Ref Environment
+
+  ListenerHTTPS:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: EnableHTTPSCondition
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupHTTPS
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: TCP
+
+  ListenerRTMP:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: EnableRTMPCondition
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupRTMP
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 1935
+      Protocol: TCP
+
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable HTTPS and RTMP
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - !If
+          - EnableHTTPSCondition
+          - 
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - !Ref "AWS::NoValue"
+        - !If
+          - EnableRTMPCondition
+          - 
+            IpProtocol: tcp
+            FromPort: 1935
+            ToPort: 1935
+            CidrIp: 0.0.0.0/0
+          - !Ref "AWS::NoValue"
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -188,101 +291,6 @@ Resources:
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
-
-  SecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: Enable HTTPS and RTMP
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - !If
-          - EnableHTTPSCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 443
-            ToPort: 443
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
-        - !If
-          - EnableRTMPCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 1935
-            ToPort: 1935
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  LoadBalancer:
-    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
-    Properties:
-      Name: proxy-nlb
-      Subnets:
-        - !Ref SubnetOne
-        - !Ref SubnetTwo
-      Scheme: internet-facing
-      Type: network
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  TargetGroupHTTPS:
-    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
-    Condition: EnableHTTPSCondition
-    Properties:
-      Name: proxy-target-group-https
-      Port: 443
-      Protocol: TCP
-      VpcId: !Ref VpcId
-      HealthCheckProtocol: TCP
-      HealthCheckPort: '443'
-      TargetType: ip
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  TargetGroupRTMP:
-    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
-    Condition: EnableRTMPCondition
-    Properties:
-      Name: proxy-target-group-rtmp
-      Port: 1935
-      Protocol: TCP
-      VpcId: !Ref VpcId
-      HealthCheckProtocol: TCP
-      HealthCheckPort: '1935'
-      TargetType: ip
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  ListenerHTTPS:
-    Type: 'AWS::ElasticLoadBalancingV2::Listener'
-    Condition: EnableHTTPSCondition
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroupHTTPS
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 443
-      Protocol: TCP
-
-  ListenerRTMP:
-    Type: 'AWS::ElasticLoadBalancingV2::Listener'
-    Condition: EnableRTMPCondition
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroupRTMP
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 1935
-      Protocol: TCP
-
-Conditions:
-  EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, true]
-  EnableRTMPCondition: !Equals [!Ref EnableRTMP, true]
 
 Outputs:
   LoadBalancerDNSName:
