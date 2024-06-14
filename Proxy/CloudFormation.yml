@@ -30,10 +30,14 @@ Parameters:
     Type: String
     Description: Environment tag for the resources
     Default: sandbox
+  HealthCheckInterval:
+    Type: Number
+    Description: Interval for health checks in seconds
+    Default: 120
 
 Conditions:
-  EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, true]
-  EnableRTMPCondition: !Equals [!Ref EnableRTMP, true]
+  EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, "true"]
+  EnableRTMPCondition: !Equals [!Ref EnableRTMP, "true"]
 
 Resources:
   ElasticIP:
@@ -65,7 +69,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: '*'
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ecs/proxy-service:*"
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -110,7 +114,7 @@ Resources:
       VpcId: !Ref VpcId
       HealthCheckProtocol: TCP
       HealthCheckPort: '443'
-      HealthCheckIntervalSeconds: 30
+      HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
@@ -129,7 +133,7 @@ Resources:
       VpcId: !Ref VpcId
       HealthCheckProtocol: TCP
       HealthCheckPort: '1935'
-      HealthCheckIntervalSeconds: 30
+      HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
@@ -256,6 +260,7 @@ Resources:
 
   Service:
     Type: 'AWS::ECS::Service'
+    DependsOn: LoadBalancer
     Properties:
       Cluster: !Ref Cluster
       TaskDefinition: !Ref TaskDefinition
@@ -308,3 +313,7 @@ Outputs:
   Environment:
     Description: The environment tag value
     Value: !Ref Environment
+
+  HealthCheckInterval:
+    Description: Interval for health checks in seconds
+    Value: !Ref HealthCheckInterval
