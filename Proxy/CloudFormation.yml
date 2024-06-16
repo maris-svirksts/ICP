@@ -22,10 +22,12 @@ Parameters:
     Type: String
     Description: Flag to enable or disable HTTPS (443) port configuration (true/false)
     Default: "true"
+    AllowedValues: ["true", "false"]
   EnableRTMP:
     Type: String
     Description: Flag to enable or disable RTMP (1935) port configuration (true/false)
     Default: "false"
+    AllowedValues: ["true", "false"]
   Environment:
     Type: String
     Description: Environment tag for the resources
@@ -209,13 +211,13 @@ Resources:
               - EnableHTTPSCondition
               - 
                 ContainerPort: 443
-                Protocol: tcp
+                Protocol: TCP
               - !Ref "AWS::NoValue"
             - !If 
               - EnableRTMPCondition
               - 
                 ContainerPort: 1935
-                Protocol: tcp
+                Protocol: TCP
               - !Ref "AWS::NoValue"
           LogConfiguration:
             LogDriver: awslogs
