@@ -40,13 +40,13 @@ Conditions:
   EnableRTMPCondition: !Equals [!Ref EnableRTMP, "true"]
 
 Resources:
-  ElasticIP:
+  ElasticIp:
     Type: 'AWS::EC2::EIP'
     Properties:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: ProxyElasticIP
+          Value: growthos-discover-proxy-elastic-ip
         - Key: growthos:environment
           Value: !Ref Environment
 
@@ -69,7 +69,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ecs/proxy-service:*"
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ecs/growthos-proxy-service:*"
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -77,7 +77,7 @@ Resources:
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
-      LogGroupName: /aws/ecs/proxy-service
+      LogGroupName: /aws/ecs/growthos-proxy-service
       RetentionInDays: 7
       Tags:
         - Key: growthos:environment
@@ -86,7 +86,7 @@ Resources:
   Cluster:
     Type: 'AWS::ECS::Cluster'
     Properties: 
-      ClusterName: proxy-cluster
+      ClusterName: growthos-discover-proxy-cluster
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -94,7 +94,7 @@ Resources:
   LoadBalancer:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
-      Name: proxy-nlb
+      Name: growthos-discover-proxy-nlb
       Subnets:
         - !Ref SubnetOne
         - !Ref SubnetTwo
@@ -104,11 +104,11 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  TargetGroupHTTPS:
+  TargetGroupHttps:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Condition: EnableHTTPSCondition
     Properties:
-      Name: proxy-target-group-https
+      Name: growthos-discover-proxy-https
       Port: 443
       Protocol: TCP
       VpcId: !Ref VpcId
@@ -123,11 +123,11 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  TargetGroupRTMP:
+  TargetGroupRtmp:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Condition: EnableRTMPCondition
     Properties:
-      Name: proxy-target-group-rtmp
+      Name: growthos-discover-proxy-rtmp
       Port: 1935
       Protocol: TCP
       VpcId: !Ref VpcId
@@ -142,24 +142,24 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  ListenerHTTPS:
+  ListenerHttps:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Condition: EnableHTTPSCondition
     Properties:
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref TargetGroupHTTPS
+          TargetGroupArn: !Ref TargetGroupHttps
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
       Protocol: TCP
 
-  ListenerRTMP:
+  ListenerRtmp:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Condition: EnableRTMPCondition
     Properties:
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref TargetGroupRTMP
+          TargetGroupArn: !Ref TargetGroupRtmp
       LoadBalancerArn: !Ref LoadBalancer
       Port: 1935
       Protocol: TCP
@@ -193,7 +193,7 @@ Resources:
   TaskDefinition:
     Type: 'AWS::ECS::TaskDefinition'
     Properties:
-      Family: proxy-task
+      Family: growthos-discover-proxy-task
       ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       Cpu: '256'
       Memory: '512'
@@ -220,7 +220,7 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: /aws/ecs/proxy-service
+              awslogs-group: /aws/ecs/growthos-proxy-service
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: proxy
           Environment:
@@ -258,7 +258,7 @@ Resources:
               EOF
               nginx -g 'daemon off;'
 
-  Service:
+  ProxyService:
     Type: 'AWS::ECS::Service'
     DependsOn: LoadBalancer
     Properties:
@@ -276,14 +276,14 @@ Resources:
           - 
             ContainerName: proxy-container
             ContainerPort: 443
-            TargetGroupArn: !Ref TargetGroupHTTPS
+            TargetGroupArn: !Ref TargetGroupHttps
           - !Ref "AWS::NoValue"
         - !If
           - EnableRTMPCondition
           - 
             ContainerName: proxy-container
             ContainerPort: 1935
-            TargetGroupArn: !Ref TargetGroupRTMP
+            TargetGroupArn: !Ref TargetGroupRtmp
           - !Ref "AWS::NoValue"
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -298,13 +298,13 @@ Resources:
           Value: !Ref Environment
 
 Outputs:
-  LoadBalancerDNSName:
+  LoadBalancerDnsName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
 
-  ElasticIP:
+  ElasticIpAddress:
     Description: The allocated Elastic IP
-    Value: !Ref ElasticIP
+    Value: !Ref ElasticIp
 
   ApiEndpoint:
     Description: The API endpoint the proxy forwards requests to
