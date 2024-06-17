@@ -1,23 +1,32 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging, and Elastic IP.
+Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging.
 
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC Id
     Default: vpc-0897a9f3de7e213c0 # growthos-discover-data-sandbox-vpc
-  SubnetOne:
+  PublicSubnetOne:
     Type: AWS::EC2::Subnet::Id
-    Description: Subnet Id for the first subnet
+    Description: Subnet Id for the first public subnet
     Default: subnet-01c1e6167c10cd939 # growthos-discover-data-sandbox-vpc GWDATAPublicSubnet1
-  SubnetTwo:
+  PublicSubnetTwo:
     Type: AWS::EC2::Subnet::Id
-    Description: Subnet Id for the second subnet
+    Description: Subnet Id for the second public subnet
     Default: subnet-0ab49b33aca6b7531 # growthos-discover-data-sandbox-vpc GWDATAPublicSubnet2
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet Id for the first private subnet
+    Default: subnet-0698e2d7aa11f94ad # growthos-discover-data-sandbox-vpc GWDATAPrivateSubnet1
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet Id for the second private subnet
+    Default: subnet-0dc656e9fbe33dc5c # growthos-discover-data-sandbox-vpc GWDATAPrivateSubnet2
   ApiEndpoint:
     Type: String
     Description: The API endpoint to forward requests to.
-    Default: 3nfgzb9txa.execute-api.eu-west-1.amazonaws.com # Replace with live endpoint
+    Default: lgas1grdoai01.openai.azure.com
+    # Default: 3nfgzb9txa.execute-api.eu-west-1.amazonaws.com # Replace with live endpoint
   EnableHTTPS:
     Type: String
     Description: Flag to enable or disable HTTPS (443) port configuration (true/false)
@@ -42,16 +51,6 @@ Conditions:
   EnableRTMPCondition: !Equals [!Ref EnableRTMP, "true"]
 
 Resources:
-  ElasticIp:
-    Type: 'AWS::EC2::EIP'
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: Name
-          Value: growthos-discover-proxy-elastic-ip
-        - Key: growthos:environment
-          Value: !Ref Environment
-
   TaskExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties: 
@@ -98,8 +97,8 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-nlb
       Subnets:
-        - !Ref SubnetOne
-        - !Ref SubnetTwo
+        - !Ref PublicSubnetOne
+        - !Ref PublicSubnetTwo
       Scheme: internet-facing
       Type: network
       Tags:
@@ -291,8 +290,8 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets:
-            - !Ref SubnetOne
-            - !Ref SubnetTwo
+            - !Ref PrivateSubnetOne
+            - !Ref PrivateSubnetTwo
           SecurityGroups:
             - !Ref SecurityGroup
       Tags:
@@ -303,10 +302,6 @@ Outputs:
   LoadBalancerDnsName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
-
-  ElasticIpAddress:
-    Description: The allocated Elastic IP
-    Value: !Ref ElasticIp
 
   ApiEndpoint:
     Description: The API endpoint the proxy forwards requests to
