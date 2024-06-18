@@ -298,7 +298,53 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt LoadBalancer.DNSName
+            Id: NLBOrigin
+            CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
+              OriginSSLProtocols:
+                - TLSv1.2
+              HTTPPort: 80  # Only if you need HTTP access, else omit this
+              HTTPSPort: 443
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: NLBOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+            Headers:
+              - Origin
+          DefaultTTL: 86400 # 1 day
+          MinTTL: 0
+          MaxTTL: 31536000 # 1 year
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true # or configure with ACM to use your custom domain
+        PriceClass: PriceClass_All # adjust based on your geographical requirements
+
+
 Outputs:
+  CloudFrontDomainName:
+    Description: "The domain name of the CloudFront distribution"
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
   LoadBalancerDnsName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
