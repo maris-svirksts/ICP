@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging.
+Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging, and CloudFront distribution.
 
 Parameters:
   VpcId:
@@ -303,6 +303,46 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: NLBOrigin
+            DomainName: !GetAtt LoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: match-viewer
+            #OriginCustomHeaders:
+            #  - HeaderName: Host
+            #    HeaderValue: !Ref ApiEndpoint
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: NLBOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+            Headers:
+              - '*'
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
 
 Outputs:
   LoadBalancerDnsName:
@@ -320,3 +360,7 @@ Outputs:
   HealthCheckInterval:
     Description: Interval for health checks in seconds
     Value: !Ref HealthCheckInterval
+
+  CloudFrontDomainName:
+    Description: Domain name of the CloudFront distribution
+    Value: !GetAtt CloudFrontDistribution.DomainName
