@@ -43,7 +43,7 @@ Parameters:
     Default: sandbox
   HealthCheckInterval:
     Type: Number
-    Description: Interval for health checks in seconds
+    Description: Interval for health checks in seconds, should not be larger than 300
     Default: 120
 
 Conditions:
@@ -232,25 +232,30 @@ Resources:
             - -c
             - |
               cat <<EOF > /etc/nginx/nginx.conf
-              events {}
+              worker_processes 1;
+              error_log /dev/stderr warn;
+
+              events { worker_connections 1024; }
+
               stream {
                   log_format main '\$remote_addr [\$time_local] "\$protocol" '
                                     '\$status \$bytes_sent "\$session_time" '
                                     '"\$upstream_addr" "\$upstream_bytes_sent" "\$upstream_connect_time"';
                   access_log /dev/stdout main;
-                  error_log /dev/stderr warn;
+
                   upstream backend_https {
                       server ${API_ENDPOINT}:443;
                   }
                   upstream backend_rtmp {
                       server ${API_ENDPOINT}:1935;
                   }
-                  # If EnableHTTPS is true
+
                   server {
                       listen 443;
+                      ssl_preread on;  # Enable SSL/TLS inspection
                       proxy_pass backend_https;
                   }
-                  # If EnableRTMP is true
+
                   server {
                       listen 1935;
                       proxy_pass backend_rtmp;
@@ -298,53 +303,8 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  CloudFrontDistribution:
-    Type: 'AWS::CloudFront::Distribution'
-    Properties:
-      DistributionConfig:
-        Origins:
-          - DomainName: !GetAtt LoadBalancer.DNSName
-            Id: NLBOrigin
-            CustomOriginConfig:
-              OriginProtocolPolicy: match-viewer
-              OriginSSLProtocols:
-                - TLSv1.2
-              HTTPPort: 80  # Only if you need HTTP access, else omit this
-              HTTPSPort: 443
-        Enabled: true
-        DefaultCacheBehavior:
-          TargetOriginId: NLBOrigin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - POST
-            - PATCH
-            - DELETE
-          CachedMethods:
-            - GET
-            - HEAD
-          ForwardedValues:
-            QueryString: true
-            Cookies:
-              Forward: all
-            Headers:
-              - Origin
-          DefaultTTL: 86400 # 1 day
-          MinTTL: 0
-          MaxTTL: 31536000 # 1 year
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true # or configure with ACM to use your custom domain
-        PriceClass: PriceClass_All # adjust based on your geographical requirements
-
 
 Outputs:
-  CloudFrontDomainName:
-    Description: "The domain name of the CloudFront distribution"
-    Value: !GetAtt CloudFrontDistribution.DomainName
-
   LoadBalancerDnsName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
