@@ -44,9 +44,6 @@ Parameters:
     Type: Number
     Description: Interval for health checks in seconds, should not be larger than 300
     Default: 120
-  EdgeLambdaFunctionARN:
-    Type: String
-    Description: ARN of the pre-deployed Lambda@Edge function version
 
 Conditions:
   EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, "true"]
@@ -305,47 +302,6 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  CloudFrontDistribution:
-    Type: 'AWS::CloudFront::Distribution'
-    Properties:
-      DistributionConfig:
-        Origins:
-          - Id: NLBOrigin
-            DomainName: !GetAtt LoadBalancer.DNSName
-            CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginProtocolPolicy: match-viewer
-        Enabled: true
-        DefaultCacheBehavior:
-          TargetOriginId: NLBOrigin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - POST
-            - PATCH
-            - DELETE
-          CachedMethods:
-            - GET
-            - HEAD
-          ForwardedValues:
-            QueryString: true
-            Cookies:
-              Forward: all
-            Headers:
-              - '*'
-          LambdaFunctionAssociations:
-            - EventType: origin-request
-              LambdaFunctionARN: !Ref EdgeLambdaFunctionARN
-          MinTTL: 0
-          DefaultTTL: 0
-          MaxTTL: 0
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
-
 Outputs:
   LoadBalancerDnsName:
     Description: DNS name of the load balancer
@@ -362,7 +318,3 @@ Outputs:
   HealthCheckInterval:
     Description: Interval for health checks in seconds
     Value: !Ref HealthCheckInterval
-
-  CloudFrontDomainName:
-    Description: Domain name of the CloudFront distribution
-    Value: !GetAtt CloudFrontDistribution.DomainName

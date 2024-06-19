@@ -14,7 +14,9 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
         - PolicyName: LambdaEdgePolicy
@@ -38,7 +40,9 @@ Resources:
           exports.handler = async (event) => {
             const request = event.Records[0].cf.request;
             const apiEndpoint = process.env.API_ENDPOINT;
+            console.log("Original Request: ", JSON.stringify(request, null, 2));
             request.headers['host'] = [{ key: 'Host', value: apiEndpoint }];
+            console.log("Modified Request: ", JSON.stringify(request, null, 2));
             return request;
           };
       Runtime: nodejs20.x
