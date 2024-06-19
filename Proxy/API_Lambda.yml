@@ -100,10 +100,12 @@ Resources:
               path: `/${path}${queryString}`,
               method: event.httpMethod,
               headers: {
-                ...event.headers,
-                host: apiEndpoint
+                ...event.headers
               }
             };
+
+            // Set the Host header to the API endpoint
+            requestOptions.headers['host'] = apiEndpoint;
 
             return new Promise((resolve, reject) => {
               const req = https.request(requestOptions, (res) => {
