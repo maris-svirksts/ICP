@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with Application Load Balancer, streaming protocol support, CloudWatch logging, and HTTPS support.
+Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging, and CloudFront distribution.
 
 Parameters:
   VpcId:
@@ -44,12 +44,9 @@ Parameters:
     Type: Number
     Description: Interval for health checks in seconds, should not be larger than 300
     Default: 120
-  DomainName:
+  EdgeLambdaFunctionARN:
     Type: String
-    Description: The domain name for the SSL certificate
-  HostedZoneId:
-    Type: String
-    Description: The ID of the hosted zone for the domain
+    Description: ARN of the pre-deployed Lambda@Edge function version
 
 Conditions:
   EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, "true"]
@@ -100,25 +97,12 @@ Resources:
   LoadBalancer:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
-      Name: growthos-discover-proxy-alb
+      Name: growthos-discover-proxy-nlb
       Subnets:
         - !Ref PublicSubnetOne
         - !Ref PublicSubnetTwo
       Scheme: internet-facing
-      SecurityGroups:
-        - !Ref SecurityGroup
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  SSLCertificate:
-    Type: 'AWS::CertificateManager::Certificate'
-    Properties:
-      DomainName: !Ref DomainName
-      ValidationMethod: DNS
-      DomainValidationOptions:
-        - DomainName: !Ref DomainName
-          HostedZoneId: !Ref HostedZoneId
+      Type: network
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -129,9 +113,9 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-https
       Port: 443
-      Protocol: HTTPS
+      Protocol: TCP
       VpcId: !Ref VpcId
-      HealthCheckProtocol: HTTPS
+      HealthCheckProtocol: TCP
       HealthCheckPort: '443'
       HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
@@ -170,9 +154,7 @@ Resources:
           TargetGroupArn: !Ref TargetGroupHttps
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
-      Protocol: HTTPS
-      Certificates:
-        - CertificateArn: !Ref SSLCertificate
+      Protocol: TCP
 
   ListenerRtmp:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
@@ -323,6 +305,47 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: NLBOrigin
+            DomainName: !GetAtt LoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: match-viewer
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: NLBOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+            Headers:
+              - '*'
+          LambdaFunctionAssociations:
+            - EventType: origin-request
+              LambdaFunctionARN: !Ref EdgeLambdaFunctionARN
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
 Outputs:
   LoadBalancerDnsName:
     Description: DNS name of the load balancer
@@ -339,3 +362,7 @@ Outputs:
   HealthCheckInterval:
     Description: Interval for health checks in seconds
     Value: !Ref HealthCheckInterval
+
+  CloudFrontDomainName:
+    Description: Domain name of the CloudFront distribution
+    Value: !GetAtt CloudFrontDistribution.DomainName
