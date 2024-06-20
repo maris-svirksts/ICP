@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ApiEndpoint:
+    Type: String
+    Description: The API endpoint to forward requests to.
+    Default: lgas1grdoai01.openai.azure.com
+
+Resources:
+  EdgeLambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaEdgePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  EdgeLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt EdgeLambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          'use strict';
+          exports.handler = async (event) => {
+            const request = event.Records[0].cf.request;
+            const apiEndpoint = process.env.API_ENDPOINT;
+            console.log("Original Request: ", JSON.stringify(request, null, 2));
+            request.headers['host'] = [{ key: 'Host', value: apiEndpoint }];
+            console.log("Modified Request: ", JSON.stringify(request, null, 2));
+            return request;
+          };
+      Runtime: nodejs20.x
+      MemorySize: 128
+      Timeout: 5
+      Environment:
+        Variables:
+          API_ENDPOINT: !Ref ApiEndpoint
+
+  LambdaVersion:
+    Type: 'AWS::Lambda::Version'
+    Properties:
+      FunctionName: !Ref EdgeLambdaFunction
+
+Outputs:
+  LambdaFunctionARN:
+    Value: !Ref LambdaVersion
+    Description: ARN of the Lambda@Edge function version
