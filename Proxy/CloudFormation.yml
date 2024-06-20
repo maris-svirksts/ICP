@@ -242,6 +242,11 @@ Resources:
                                     '"\$upstream_addr" "\$upstream_bytes_sent" "\$upstream_connect_time"';
                   access_log /dev/stdout main;
 
+                  # Map to extract the SNI from the client hello and set the appropriate upstream
+                  map \$ssl_preread_server_name \$upstream_name {
+                      default ${API_ENDPOINT};
+                  }
+
                   upstream backend_https {
                       server ${API_ENDPOINT}:443;
                   }
@@ -253,6 +258,9 @@ Resources:
                       listen 443;
                       ssl_preread on;  # Enable SSL/TLS inspection
                       proxy_pass backend_https;
+                      set \$proxy_host ${API_ENDPOINT};
+                      proxy_ssl_name \$proxy_host;
+                      proxy_ssl_server_name on;
                   }
 
                   server {
