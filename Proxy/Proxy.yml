@@ -1,6 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging, and CloudFront distribution.
 
+Metadata:
+  Author: Maris Svirksts
+  Version: 1.0
+  Date: 2024-06-21
+
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -44,12 +49,17 @@ Parameters:
     Type: Number
     Description: Interval for health checks in seconds, should not be larger than 300
     Default: 120
+  ContainerImage:
+    Type: String
+    Description: Container image for the proxy service
+    Default: nginx:latest
 
 Conditions:
   EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, "true"]
   EnableRTMPCondition: !Equals [!Ref EnableRTMP, "true"]
 
 Resources:
+  # IAM Role for ECS Task Execution
   TaskExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties: 
@@ -74,6 +84,7 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  # CloudWatch Log Group
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -83,6 +94,7 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  # ECS Cluster
   Cluster:
     Type: 'AWS::ECS::Cluster'
     Properties: 
@@ -91,6 +103,7 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  # Network Load Balancer
   LoadBalancer:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
@@ -104,6 +117,7 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  # Target Groups
   TargetGroupHttps:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Condition: EnableHTTPSCondition
@@ -142,6 +156,7 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  # Load Balancer Listeners
   ListenerHttps:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Condition: EnableHTTPSCondition
@@ -164,6 +179,7 @@ Resources:
       Port: 1935
       Protocol: TCP
 
+  # Security Group
   SecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -186,10 +202,14 @@ Resources:
             ToPort: 1935
             CidrIp: 0.0.0.0/0
           - !Ref "AWS::NoValue"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
 
+  # ECS Task Definition
   TaskDefinition:
     Type: 'AWS::ECS::TaskDefinition'
     Properties:
@@ -202,7 +222,7 @@ Resources:
         - FARGATE
       ContainerDefinitions:
         - Name: proxy-container
-          Image: nginx
+          Image: !Ref ContainerImage
           Essential: true
           PortMappings:
             - !If 
@@ -263,6 +283,7 @@ Resources:
               EOF
               nginx -g 'daemon off;'
 
+  # ECS Service
   ProxyService:
     Type: 'AWS::ECS::Service'
     DependsOn: LoadBalancer
