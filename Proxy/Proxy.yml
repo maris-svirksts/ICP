@@ -113,6 +113,30 @@ Resources:
         - !Ref PublicSubnetTwo
       Scheme: internet-facing
       Type: network
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: growthos:environment
+          Value: !Ref Environment
+
+  # Security Group for NLB
+  LoadBalancerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security group for the load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 1935
+          ToPort: 1935
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -179,7 +203,7 @@ Resources:
       Port: 1935
       Protocol: TCP
 
-  # Security Group
+  # Security Group for ECS Service
   SecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
