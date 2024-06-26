@@ -174,11 +174,11 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
       Protocol: TCP
-      Certificates:
-        - !If
-          - HasCertificate
-          - CertificateArn: !Ref CertificateArn
-          - !Ref "AWS::NoValue"
+      #Certificates:
+      #  - !If
+      #    - HasCertificate
+      #    - CertificateArn: !Ref CertificateArn
+      #    - !Ref "AWS::NoValue"
 
   ListenerRtmp:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
