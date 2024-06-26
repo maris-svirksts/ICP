@@ -1,0 +1,274 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Outbound filtering proxy using Fargate
+
+Parameters:
+
+  WhitelistedDomains:
+    Type: String
+    Default: .amazonaws.com, .debian.org
+    Description: Whitelisted domains comma separated 
+  
+  CustomDNS:
+    Type: String
+    Default: default
+    Description: Provide optional a DNS server for domain filtering, like OpenDNS (comma separated, like 8.8.8.8,8.8.8.7)
+  
+  ProxyPort:
+    Type: String
+    Default: 3128
+    Description: Port Proxy 
+
+  VpcId: 
+    Description: VPC ID Where the Proxy will be installed
+    Type: "AWS::EC2::VPC::Id"
+
+  PrivateSubnetIDs: 
+    Description: Private SubnetIDs where the Network LoadBalancer will be placed (Select min 2 max 3)
+    Type: "List<AWS::EC2::Subnet::Id>"
+  
+  PublicSubnetIDs: 
+    Description: Public SubnetIDs where the proxy will be placed (Select min 2 max 3)
+    Type: "List<AWS::EC2::Subnet::Id>"
+
+  NetworkAllowedCIDR:
+    Description: CIDR allowed in Proxy Security Group. The allowed block size is between a /32 netmask and /8 netmask
+    Type: String
+    Default: 172.31.0.0/16
+    AllowedPattern: ^[.0-9]*\/([89]|[12][0-9]|3[0-2])$
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: Proxy parameter
+      Parameters:
+      - WhitelistedDomains
+      - CustomDNS  
+      - ProxyPort
+
+    - Label:
+        default: Network parameter
+      Parameters:
+      - VpcId
+      - PrivateSubnetIDs
+      - PublicSubnetIDs 
+      - NetworkAllowedCIDR
+
+    ParameterLabels:
+      WhitelistedDomains:
+        default: Allowed domains (whitelisted)
+      CustomDNS:
+        default: Custom DNS servers
+      ProxyPort:
+        default: Proxy Port
+      VpcId:
+        default: VPC ID
+      PrivateSubnetIDs:
+        default: Private Subnet IDs
+      PublicSubnetIDs:
+        default: Public Subnet IDs
+      NetworkAllowedCIDR:
+        default: Allowed client CIRD
+
+Resources:
+
+  OutboundProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "Outbound-proxy-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ecs-tasks.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: LogRolePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - logs:DescribeLogStreams
+            Resource:
+             - !GetAtt OutboundProxyLogGroup.Arn
+      - PolicyName: RevokeAuthorizeSG
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:RevokeSecurityGroupIngress
+            - ec2:AuthorizeSecurityGroupIngress
+            - ec2:Describe*
+            Resource:
+            - "*"
+      - PolicyName: GetSecret
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+            - !Ref WhitelistedSitesSecret
+      - PolicyName: CloudWatchMetric
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: 
+            - cloudwatch:PutMetricData
+            Resource:
+            - "*"
+
+  WhitelistedSitesSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: Proxy-Domains-Whitelisting
+      Description: This secret contains the proxy whitelisted domains 
+      SecretString: !Ref WhitelistedDomains
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Type: network
+      Name: OutboundProxyLoadBalancer
+      Subnets: !Ref PrivateSubnetIDs
+  
+  NetworkLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: OutboundProxyTargetGroup
+      Port: !Ref ProxyPort
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60 
+      Tags:
+        - Key: Name
+          Value: SMARTProxyTargetGroup
+
+  LoadBalancerListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref NetworkLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: !Ref ProxyPort
+      Protocol: TCP
+
+  OutboundProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to Outbound Proxy
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - CidrIp: !Ref NetworkAllowedCIDR
+        FromPort: !Ref ProxyPort
+        ToPort: !Ref ProxyPort
+        IpProtocol: tcp
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "OutboundProxyCluster-${AWS::StackName}"
+
+  ProxyTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: OutboundProxyTask
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: "512"
+      Memory: "1024"
+      ExecutionRoleArn: !GetAtt OutboundProxyRole.Arn
+      ContainerDefinitions:
+        - Name: outbound-proxy
+          Image: "amazonlinux:2"
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ProxyPort
+              HostPort: !Ref ProxyPort
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref OutboundProxyLogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: outbound-proxy
+          Command:
+            - /bin/sh
+            - -c
+            - |
+              yum -y install python-pip python-setuptools awscli squid
+              yum install -y awslogs
+              echo "squid setup"
+              systemctl start squid
+              while true; do sleep 3600; done
+
+  ProxyService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref OutboundProxySecurityGroup
+          Subnets: !Ref PublicSubnetIDs
+      TaskDefinition: !Ref ProxyTaskDefinition
+      LoadBalancers:
+        - ContainerName: outbound-proxy
+          ContainerPort: !Ref ProxyPort
+          TargetGroupArn: !Ref NetworkLoadBalancerTargetGroup
+
+  OutboundProxyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub "Proxy-${AWS::StackName}"
+
+Outputs:
+  CloudWatchLogGroupName:
+    Description: The name of the CloudWatch log group for outbound proxy
+    Value: !Ref OutboundProxyLogGroup
+    Export:
+      Name: Proxy-CloudWatchLogGroupName
+
+  OutboundProxyDomain:
+    Description: Proxy DNS name to be used in the clients 
+    Value: !GetAtt LoadBalancer.DNSName
+    Export: 
+        Name: Proxy-Domain
+
+  OutboundProxyPort:
+    Description: Port of the Proxy 
+    Value: !Ref ProxyPort
+    Export:
+      Name: Proxy-Port
+
+  SecurityGroupProxy:
+    Description: Proxy security group 
+    Value: !Ref OutboundProxySecurityGroup
+    Export: 
+        Name: Proxy-SecurityGroup
+
+  LinuxProxySettings:
+    Description: Linux proxy settings. Copy and paste to your shell to set the proxy
+    Value: !Sub "export http_proxy=http://${LoadBalancer.DNSName}:${ProxyPort} && export https_proxy=$http_proxy"
+    Export: 
+      Name: LinuxProxySettings
