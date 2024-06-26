@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, CloudWatch logging, and CloudFront distribution.
+Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support and CloudWatch logging.
 
 Metadata:
   Author: Maris Svirksts
@@ -48,14 +48,14 @@ Parameters:
   HealthCheckInterval:
     Type: Number
     Description: Interval for health checks in seconds, should not be larger than 300
-    Default: 120
+    Default: 300
   ContainerImage:
     Type: String
     Description: Container image for the proxy service
     Default: nginx:latest
   CertificateArn:
     Type: String
-    Description: ACM Certificate ARN for HTTPS
+    Description: ACM Certificate ARN for HTTPS (empty/ACM certificate ARN)
     Default: ""
     AllowedPattern: "^$|arn:aws:acm:[^:]+:[0-9]{12}:certificate/.+"
     ConstraintDescription: Must be a valid ACM certificate ARN or an empty string.
