@@ -215,8 +215,22 @@ Resources:
             CidrIp: 0.0.0.0/0
           - !Ref "AWS::NoValue"
       SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
+        - !If
+          - EnableHTTPSCondition
+          - 
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - !Ref "AWS::NoValue"
+        - !If
+          - EnableRTMPCondition
+          - 
+            IpProtocol: tcp
+            FromPort: 1935
+            ToPort: 1935
+            CidrIp: 0.0.0.0/0
+          - !Ref "AWS::NoValue"
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
