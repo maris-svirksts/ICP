@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation template to deploy SonarQube on AWS Fargate
+
+Metadata:
+  Author: Maris Svirksts
+  Version: 0.1
+  Date: 2024-06-26
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id
+    Default: vpc-0897a9f3de7e213c0 # growthos-discover-data-sandbox-vpc
+
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet Id for the first public subnet
+    Default: subnet-01c1e6167c10cd939 # growthos-discover-data-sandbox-vpc GWDATAPublicSubnet1
+
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet Id for the second public subnet
+    Default: subnet-0ab49b33aca6b7531 # growthos-discover-data-sandbox-vpc GWDATAPublicSubnet2
+
+  SonarQubeVersion:
+    Type: String
+    Default: "lts"
+    Description: Version of SonarQube to deploy
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: SonarQubeCluster
+
+  SonarQubeTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: SonarQubeTask
+      Cpu: "1024"
+      Memory: "2048"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: sonarqube
+          Image: !Sub "sonarqube:${SonarQubeVersion}"
+          PortMappings:
+            - ContainerPort: 9000
+          Essential: true
+          Environment:
+            - Name: SONARQUBE_JDBC_USERNAME
+              Value: sonarqube
+            - Name: SONARQUBE_JDBC_PASSWORD
+              Value: sonarqube
+            - Name: SONARQUBE_JDBC_URL
+              Value: jdbc:postgresql://db:5432/sonarqube
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  SonarQubeService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      TaskDefinition: !Ref SonarQubeTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PublicSubnetOne
+            - !Ref PublicSubnetTwo
+          AssignPublicIp: ENABLED
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: SonarQubeLB
+      Subnets:
+        - !Ref PublicSubnetOne
+        - !Ref PublicSubnetTwo
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Type: application
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable access to the SonarQube load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  SonarQubeTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: SonarQubeTG
+      Port: 9000
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: '9000'
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      Matcher:
+        HttpCode: 200
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref SonarQubeTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+Outputs:
+  LoadBalancerDNSName:
+    Description: "DNS Name of the load balancer"
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: LoadBalancerDNSName
