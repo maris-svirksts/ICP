@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support and CloudWatch logging.
+Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, and CloudWatch logging.
 
 Metadata:
   Author: Maris Svirksts
@@ -131,9 +131,9 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-https
       Port: 443
-      Protocol: TLS
+      Protocol: TCP
       VpcId: !Ref VpcId
-      HealthCheckProtocol: TLS
+      HealthCheckProtocol: TCP
       HealthCheckPort: '443'
       HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
@@ -150,9 +150,9 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-rtmp
       Port: 1935
-      Protocol: TLS
+      Protocol: TCP
       VpcId: !Ref VpcId
-      HealthCheckProtocol: TLS
+      HealthCheckProtocol: TCP
       HealthCheckPort: '1935'
       HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
@@ -174,11 +174,11 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
       Protocol: TLS
-      #Certificates:
-      #  - !If
-      #    - HasCertificate
-      #    - CertificateArn: !Ref CertificateArn
-      #    - !Ref "AWS::NoValue"
+      Certificates:
+        - !If
+          - HasCertificate
+          - CertificateArn: !Ref CertificateArn
+          - !Ref "AWS::NoValue"
 
   ListenerRtmp:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
@@ -189,7 +189,7 @@ Resources:
           TargetGroupArn: !Ref TargetGroupRtmp
       LoadBalancerArn: !Ref LoadBalancer
       Port: 1935
-      Protocol: TLS
+      Protocol: TCP
 
   # Security Group
   SecurityGroup:
@@ -215,22 +215,8 @@ Resources:
             CidrIp: 0.0.0.0/0
           - !Ref "AWS::NoValue"
       SecurityGroupEgress:
-        - !If
-          - EnableHTTPSCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 443
-            ToPort: 443
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
-        - !If
-          - EnableRTMPCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 1935
-            ToPort: 1935
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment

@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, Application Load Balancer, streaming protocol support and CloudWatch logging.
+Description: CloudFormation template for a Fargate-based proxy service with Network Load Balancer, streaming protocol support, and CloudWatch logging.
 
 Metadata:
   Author: Maris Svirksts
-  Version: 1.3
-  Date: 2024-06-27
+  Version: 1.2
+  Date: 2024-06-21
 
 Parameters:
   VpcId:
@@ -31,16 +31,6 @@ Parameters:
     Type: String
     Description: The API endpoint to forward requests to.
     Default: lgas1grdoai01.openai.azure.com
-  EnableHTTPS:
-    Type: String
-    Description: Flag to enable or disable HTTPS (443) port configuration (true/false)
-    Default: "true"
-    AllowedValues: ["true", "false"]
-  EnableRTMP:
-    Type: String
-    Description: Flag to enable or disable RTMP (1935) port configuration (true/false)
-    Default: "false"
-    AllowedValues: ["true", "false"]
   Environment:
     Type: String
     Description: Environment tag for the resources
@@ -61,8 +51,6 @@ Parameters:
     ConstraintDescription: Must be a valid ACM certificate ARN or an empty string.
 
 Conditions:
-  EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, "true"]
-  EnableRTMPCondition: !Equals [!Ref EnableRTMP, "true"]
   HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
 
 Resources:
@@ -110,57 +98,6 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  # Application Load Balancer (ALB)
-  ApplicationLoadBalancer:
-    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
-    Condition: EnableHTTPSCondition
-    Properties:
-      Name: growthos-discover-proxy-alb
-      Subnets:
-        - !Ref PublicSubnetOne
-        - !Ref PublicSubnetTwo
-      Scheme: internet-facing
-      SecurityGroups:
-        - !Ref SecurityGroup
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  # ALB Target Group for HTTPS
-  AlbTargetGroupHttps:
-    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
-    Condition: EnableHTTPSCondition
-    Properties:
-      Name: growthos-discover-proxy-https-alb
-      Port: 80
-      Protocol: HTTP
-      VpcId: !Ref VpcId
-      HealthCheckProtocol: HTTP
-      HealthCheckPort: '80'
-      HealthCheckPath: /
-      HealthCheckIntervalSeconds: !Ref HealthCheckInterval
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 2
-      TargetType: ip
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  # ALB Listener for HTTPS
-  AlbListenerHttps:
-    Type: 'AWS::ElasticLoadBalancingV2::Listener'
-    Condition: EnableHTTPSCondition
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref AlbTargetGroupHttps
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 443
-      Protocol: HTTPS
-      Certificates:
-        - CertificateArn: !Ref CertificateArn
-
   # Network Load Balancer
   LoadBalancer:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
@@ -175,10 +112,9 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  # Target Groups for NLB
+  # Target Group for HTTPS
   TargetGroupHttps:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
-    Condition: EnableHTTPSCondition
     Properties:
       Name: growthos-discover-proxy-https
       Port: 443
@@ -195,88 +131,36 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  TargetGroupRtmp:
-    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
-    Condition: EnableRTMPCondition
-    Properties:
-      Name: growthos-discover-proxy-rtmp
-      Port: 1935
-      Protocol: TCP
-      VpcId: !Ref VpcId
-      HealthCheckProtocol: TCP
-      HealthCheckPort: '1935'
-      HealthCheckIntervalSeconds: !Ref HealthCheckInterval
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 2
-      TargetType: ip
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
-
-  # NLB Load Balancer Listeners
+  # Load Balancer Listener for HTTPS with SSL Certificate
   ListenerHttps:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
-    Condition: EnableHTTPSCondition
     Properties:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroupHttps
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
-      Protocol: TCP
-
-  ListenerRtmp:
-    Type: 'AWS::ElasticLoadBalancingV2::Listener'
-    Condition: EnableRTMPCondition
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroupRtmp
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 1935
-      Protocol: TCP
+      Protocol: TLS
+      Certificates:
+        - !If
+          - HasCertificate
+          - CertificateArn: !Ref CertificateArn
+          - !Ref "AWS::NoValue"
 
   # Security Group
   SecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: Enable HTTPS and RTMP
+      GroupDescription: Enable HTTPS
       VpcId: !Ref VpcId
       SecurityGroupIngress:
-        - !If
-          - EnableHTTPSCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 443
-            ToPort: 443
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
-        - !If
-          - EnableRTMPCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 1935
-            ToPort: 1935
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
-        - !If
-          - EnableHTTPSCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 443
-            ToPort: 443
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
-        - !If
-          - EnableRTMPCondition
-          - 
-            IpProtocol: tcp
-            FromPort: 1935
-            ToPort: 1935
-            CidrIp: 0.0.0.0/0
-          - !Ref "AWS::NoValue"
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: growthos:environment
           Value: !Ref Environment
@@ -297,18 +181,8 @@ Resources:
           Image: !Ref ContainerImage
           Essential: true
           PortMappings:
-            - !If 
-              - EnableHTTPSCondition
-              - 
-                ContainerPort: 443
-                Protocol: TCP
-              - !Ref "AWS::NoValue"
-            - !If 
-              - EnableRTMPCondition
-              - 
-                ContainerPort: 1935
-                Protocol: TCP
-              - !Ref "AWS::NoValue"
+            - ContainerPort: 443
+              Protocol: TCP
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -337,19 +211,11 @@ Resources:
                   upstream backend_https {
                       server ${API_ENDPOINT}:443;
                   }
-                  upstream backend_rtmp {
-                      server ${API_ENDPOINT}:1935;
-                  }
 
                   server {
                       listen 443;
                       ssl_preread on;  # Enable SSL/TLS inspection
                       proxy_pass backend_https;
-                  }
-
-                  server {
-                      listen 1935;
-                      proxy_pass backend_rtmp;
                   }
               }
               EOF
@@ -369,20 +235,9 @@ Resources:
         MaximumPercent: 200
         MinimumHealthyPercent: 50
       LoadBalancers:
-        - !If
-          - EnableHTTPSCondition
-          - 
-            ContainerName: proxy-container
-            ContainerPort: 443
-            TargetGroupArn: !Ref TargetGroupHttps
-          - !Ref "AWS::NoValue"
-        - !If
-          - EnableRTMPCondition
-          - 
-            ContainerName: proxy-container
-            ContainerPort: 1935
-            TargetGroupArn: !Ref TargetGroupRtmp
-          - !Ref "AWS::NoValue"
+        - ContainerName: proxy-container
+          ContainerPort: 443
+          TargetGroupArn: !Ref TargetGroupHttps
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
@@ -399,13 +254,6 @@ Outputs:
   LoadBalancerDnsName:
     Description: DNS name of the load balancer
     Value: !GetAtt LoadBalancer.DNSName
-
-  ApplicationLoadBalancerDnsName:
-    Description: DNS name of the application load balancer
-    Value: !If 
-      - EnableHTTPSCondition
-      - !GetAtt ApplicationLoadBalancer.DNSName
-      - !Ref "AWS::NoValue"
 
   ApiEndpoint:
     Description: The API endpoint the proxy forwards requests to
