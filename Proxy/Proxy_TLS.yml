@@ -56,7 +56,7 @@ Parameters:
   CertificateArn:
     Type: String
     Description: ACM Certificate ARN for HTTPS (empty/ACM certificate ARN)
-    Default: ""
+    Default: "arn:aws:acm:eu-west-1:155258020391:certificate/93583b08-9315-4458-a229-ef1c2ae0193b"
     AllowedPattern: "^$|arn:aws:acm:[^:]+:[0-9]{12}:certificate/.+"
     ConstraintDescription: Must be a valid ACM certificate ARN or an empty string.
 
@@ -131,9 +131,9 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-https
       Port: 443
-      Protocol: TCP
+      Protocol: TLS
       VpcId: !Ref VpcId
-      HealthCheckProtocol: TCP
+      HealthCheckProtocol: TLS
       HealthCheckPort: '443'
       HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
@@ -150,9 +150,9 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-rtmp
       Port: 1935
-      Protocol: TCP
+      Protocol: TLS
       VpcId: !Ref VpcId
-      HealthCheckProtocol: TCP
+      HealthCheckProtocol: TLS
       HealthCheckPort: '1935'
       HealthCheckIntervalSeconds: !Ref HealthCheckInterval
       HealthCheckTimeoutSeconds: 5
@@ -163,7 +163,7 @@ Resources:
         - Key: growthos:environment
           Value: !Ref Environment
 
-  # Load Balancer Listeners
+  # Load Balancer Listeners with SSL Certificate
   ListenerHttps:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Condition: EnableHTTPSCondition
@@ -173,7 +173,7 @@ Resources:
           TargetGroupArn: !Ref TargetGroupHttps
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
-      Protocol: TCP
+      Protocol: TLS
       #Certificates:
       #  - !If
       #    - HasCertificate
@@ -189,7 +189,7 @@ Resources:
           TargetGroupArn: !Ref TargetGroupRtmp
       LoadBalancerArn: !Ref LoadBalancer
       Port: 1935
-      Protocol: TCP
+      Protocol: TLS
 
   # Security Group
   SecurityGroup:
