@@ -75,9 +75,6 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ecs/growthos-proxy-service:*"
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   # CloudWatch Log Group
   LogGroup:
@@ -85,18 +82,12 @@ Resources:
     Properties:
       LogGroupName: /aws/ecs/growthos-proxy-service
       RetentionInDays: 7
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   # ECS Cluster
   Cluster:
     Type: 'AWS::ECS::Cluster'
     Properties: 
       ClusterName: growthos-discover-proxy-cluster
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   # Network Load Balancer
   LoadBalancer:
@@ -108,9 +99,6 @@ Resources:
         - !Ref PublicSubnetTwo
       Scheme: internet-facing
       Type: network
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   # Target Group for HTTPS
   TargetGroupHttps:
@@ -127,9 +115,6 @@ Resources:
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
       TargetType: ip
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   # Load Balancer Listener for HTTPS with SSL Certificate
   ListenerHttps:
@@ -161,9 +146,6 @@ Resources:
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
   # ECS Task Definition
   TaskDefinition:
@@ -246,9 +228,6 @@ Resources:
             - !Ref PrivateSubnetTwo
           SecurityGroups:
             - !Ref SecurityGroup
-      Tags:
-        - Key: growthos:environment
-          Value: !Ref Environment
 
 Outputs:
   LoadBalancerDnsName:
