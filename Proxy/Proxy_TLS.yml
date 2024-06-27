@@ -131,7 +131,7 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-https
       Port: 443
-      Protocol: TCP
+      Protocol: TLS
       VpcId: !Ref VpcId
       HealthCheckProtocol: TCP
       HealthCheckPort: '443'
