@@ -150,7 +150,7 @@ Resources:
     Properties:
       Name: growthos-discover-proxy-rtmp
       Port: 1935
-      Protocol: TCP
+      Protocol: TLS
       VpcId: !Ref VpcId
       HealthCheckProtocol: TCP
       HealthCheckPort: '1935'
@@ -189,7 +189,12 @@ Resources:
           TargetGroupArn: !Ref TargetGroupRtmp
       LoadBalancerArn: !Ref LoadBalancer
       Port: 1935
-      Protocol: TCP
+      Protocol: TLS
+      Certificates:
+        - !If
+          - HasCertificate
+          - CertificateArn: !Ref CertificateArn
+          - !Ref "AWS::NoValue"
 
   # Security Group
   SecurityGroup:
