@@ -3,7 +3,7 @@ Description: CloudFormation template for a Fargate-based proxy service with Netw
 
 Metadata:
   Author: Maris Svirksts
-  Version: 1.2
+  Version: 1.0
   Date: 2024-06-21
 
 Parameters:
@@ -59,6 +59,10 @@ Parameters:
     Default: "arn:aws:acm:eu-west-1:155258020391:certificate/93583b08-9315-4458-a229-ef1c2ae0193b"
     AllowedPattern: "^$|arn:aws:acm:[^:]+:[0-9]{12}:certificate/.+"
     ConstraintDescription: Must be a valid ACM certificate ARN or an empty string.
+  DesiredCount:
+    Type: Number
+    Description: The desired number of ECS tasks
+    Default: 1
 
 Conditions:
   EnableHTTPSCondition: !Equals [!Ref EnableHTTPS, "true"]
@@ -307,7 +311,7 @@ Resources:
     Properties:
       Cluster: !Ref Cluster
       TaskDefinition: !Ref TaskDefinition
-      DesiredCount: 1
+      DesiredCount: !Ref DesiredCount
       LaunchType: FARGATE
       HealthCheckGracePeriodSeconds: 60
       DeploymentConfiguration:
