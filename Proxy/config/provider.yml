@@ -1,6 +1,0 @@
-name: aws
-region: ${env:AWS_REGION, 'us-east-1'}
-ecr:
-  images:
-    nginx-proxy:
-      path: ${env:DOCKER_CONTEXT_PATH, './docker'}
